@@ -1,7 +1,7 @@
 from distutils.core import setup
 
 setup(name='python-pulumi-helm',
-      version='0.1',
+      version='0.1.2',
       description='Python Pulumi Helm charts',
       url='https://github.com/luismiguelsaez/python-pulumi-helm',
       install_requires=[
