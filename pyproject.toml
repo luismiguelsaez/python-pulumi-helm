@@ -1,0 +1,21 @@
+[project]
+  name = "python_pulumi_helm"
+  description = "Python Pulumi Helm charts."
+  dependencies = ["pulumi-kubernetes>=4.1.1,<5.0.0","pulumi>=3.82.0,<4.0.0"]
+  keywords = ["pulumi", "kubernetes", "helm"]
+  readme = "README.md"
+  requires-python = ">=3.7"
+  version = "0.1.2"
+  [project.license]
+    text = "Apache-2.0"
+  [project.urls]
+    Repository = "https://github.com/luismiguelsaez/python-pulumi-helm"
+
+[build-system]
+  requires = ["setuptools>=61.0"]
+  build-backend = "setuptools.build_meta"
+
+[tool]
+  [tool.setuptools]
+    [tool.setuptools.package-data]
+      python_pulumi_helm = ["py.typed"]
