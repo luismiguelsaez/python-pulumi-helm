@@ -1,0 +1,19 @@
+# python_pulumi_helm
+
+## Overview
+
+This module includes several Pulumi Helm charts ( `pulumi_helm` module ), using the [Pulumi Helm Relase](https://www.pulumi.com/registry/packages/kubernetes/api-docs/helm/v3/release/) package.
+
+It provides Helm releases for the following charts:
+
+- [AWS load balancer controller](https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.6)
+- [External DNS](https://github.com/kubernetes-sigs/external-dns)
+- [AWS EBS CSI driver](https://github.com/kubernetes-sigs/aws-ebs-csi-driver)
+- [Cluster autoscaler](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler)
+- [Metrics server](https://github.com/kubernetes-sigs/metrics-server)
+- [Karpenter](https://github.com/aws/karpenter)
+- [Ingress Nginx](https://github.com/kubernetes/ingress-nginx)
+- [Opensearch](https://opensearch.org/docs/latest/install-and-configure/install-opensearch/helm)
+- [Prometheus](https://github.com/prometheus-community/helm-charts)
+- [Thanos](https://github.com/bitnami/charts)
+- [ArgoCD](https://github.com/argoproj/argo-helm)
