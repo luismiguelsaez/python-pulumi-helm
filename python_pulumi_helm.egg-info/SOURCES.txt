@@ -1,3 +1,5 @@
+README.md
+setup.cfg
 setup.py
 python_pulumi_helm/__init__.py
 python_pulumi_helm/releases.py
