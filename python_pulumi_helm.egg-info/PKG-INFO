@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: python-pulumi-helm
-Version: 0.1.8
+Version: 0.2.0
 Summary: https://github.com/luismiguelsaez/python-pulumi-helm
 Home-page: https://github.com/luismiguelsaez/python-pulumi-helm
 Author: Luis Miguel Sáez
