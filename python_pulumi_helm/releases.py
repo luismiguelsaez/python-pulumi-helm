@@ -1692,7 +1692,7 @@ def loki(
     repo: str = "https://grafana.github.io/helm-charts",
     namespace: str = "default",
     skip_await: bool = False,
-    depends_on: list = [] )->Release:
+    depends_on: list = [] )->(Release, Release):
 
     global_affinity = {
         "nodeAffinity": {
@@ -1743,6 +1743,31 @@ def loki(
         },
     }
 
+    promtail_release = release(
+        name="promtail",
+        chart="promtail",
+        version="6.15.1",
+        repo=repo,
+        timeout=600,
+        namespace=namespace,
+        skip_await=skip_await,
+        depends_on=depends_on,
+        provider=provider,
+        values={
+            "daemonset": {
+                "enabled": True,
+            },
+            "config": {
+                "clients": [
+                    {
+                        "url": f"http://{'loki' if name_override != '' else name_override}-gateway.{namespace}.svc.cluster.local/loki/api/v1/push",
+                        "tenant_id": "default",
+                    }
+                ]
+            }
+        }
+    )
+
     loki_release = release(
         name=name,
         chart=chart,
@@ -1774,9 +1799,12 @@ def loki(
                             "grafana_dashboard": 1,
                         },
                     },
-                },
-                "serviceMonitor": {
-                    "enabled": metrics_enabled,
+                    "serviceMonitor": {
+                        "enabled": metrics_enabled,
+                    },
+                    "lokiCanary": {
+                        "enabled": True,
+                    },
                 },
                 "storage": {
                     "type": "s3",
@@ -1839,4 +1867,4 @@ def loki(
         }
     )
 
-    return loki_release
+    return loki_release, promtail_release
