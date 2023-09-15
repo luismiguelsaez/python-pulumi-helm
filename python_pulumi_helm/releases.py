@@ -1682,6 +1682,7 @@ def loki(
     replicas_read: int = 3,
     replicas_write: int = 3,
     replicas_backend: int = 3,
+    replicas_gateway: int = 3,
     karpenter_node_enabled: bool = True,
     karpenter_node_provider_name: str = "default",
     name_override: str = "",
@@ -1804,7 +1805,7 @@ def loki(
             },
             "write": {
                 "replicas": replicas_write,
-                "persistencd": {
+                "persistence": {
                     "size": storage_size_write,
                     "storageClass": storage_class_name,
                 },
@@ -1812,7 +1813,7 @@ def loki(
             },
             "read": {
                 "replicas": replicas_read,
-                "persistencd": {
+                "persistence": {
                     "size": storage_size_read,
                     "storageClass": storage_class_name,
                 },
@@ -1820,7 +1821,7 @@ def loki(
             },
             "backend": {
                 "replicas": replicas_backend,
-                "persistencd": {
+                "persistence": {
                     "size": storage_size_backend,
                     "storageClass": storage_class_name,
                 },
@@ -1828,6 +1829,11 @@ def loki(
             },
             "test": {
                 "enabled": True,
+            },
+            "gateway": {
+                "enabled": True,
+                "replicas": replicas_gateway,
+                "affinity": global_affinity_str,
             },
             "extraObjects": [] + [karpenter_provisioner_obj] if karpenter_node_enabled else [],
         }
