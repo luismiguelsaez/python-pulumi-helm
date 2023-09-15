@@ -1749,8 +1749,14 @@ def loki(
                     },
                 },
                 "storage": {
+                    "bucketNames": {
+                        "chunks": obj_storage_bucket,
+                        "ruler": obj_storage_bucket,
+                        "admin": obj_storage_bucket
+                    },
                     "type": "s3",
                     "s3": {
+                        "s3": f"s3://{aws_region}",
                         "bucketname": obj_storage_bucket,
                         "endpoint": f"s3.{aws_region}.amazonaws.com",
                         "region": aws_region,
