@@ -587,7 +587,7 @@ def argocd(
                     "app": "argo-cd"
                 },
                 "revisionHistoryLimit": 3,
-                "affinity": {}.update(karpenter_provisioner_affinity_global if karpenter_node_enabled else {}),
+                "affinity": karpenter_provisioner_affinity_global if karpenter_node_enabled else {},
             },
             "configs": {
                 "cm": {
@@ -628,7 +628,7 @@ def argocd(
                         "memory": "512Mi"
                     }
                 },
-                "affinity": {}.update(karpenter_provisioner_affinity_redis if karpenter_node_enabled else {}),
+                "affinity": karpenter_provisioner_affinity_redis if karpenter_node_enabled else {},
             },
             "redis-ha": {
                 "enabled": argocd_redis_ha_enabled,
@@ -644,23 +644,7 @@ def argocd(
                     "enabled": argocd_redis_ha_haproxy_enabled,
                     "hardAntiAffinity": True,
                     "affinity": "",
-                    "additionalAffinities": {
-                        "nodeAffinity": {
-                            "requiredDuringSchedulingIgnoredDuringExecution": {
-                                "nodeSelectorTerms": [
-                                    {
-                                        "matchExpressions": [
-                                            {
-                                                "key": "app",
-                                                "operator": "In",
-                                                "values": ["redis"]
-                                            }
-                                        ],
-                                    },
-                                ],
-                            },
-                        },
-                    },
+                    "additionalAffinities": karpenter_provisioner_affinity_redis if karpenter_node_enabled else {},
                 },
                 "topologySpreadConstraints": {
                     "enabled": "true",
@@ -669,23 +653,7 @@ def argocd(
                     "whenUnsatisfiable": "DoNotSchedule",
                 },
                 "hardAntiAffinity": True,
-                "additionalAffinities": {
-                    "nodeAffinity": {
-                        "requiredDuringSchedulingIgnoredDuringExecution": {
-                            "nodeSelectorTerms": [
-                                {
-                                    "matchExpressions": [
-                                        {
-                                            "key": "app",
-                                            "operator": "In",
-                                            "values": ["redis"]
-                                        }
-                                    ],
-                                },
-                            ],
-                        },
-                    },
-                },
+                "additionalAffinities": karpenter_provisioner_affinity_redis if karpenter_node_enabled else {},
             },
             "controller": {
                 "replicas": argocd_application_controller_replicas,
