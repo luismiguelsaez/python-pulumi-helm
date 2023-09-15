@@ -727,6 +727,7 @@ def argocd(
 
 def prometheus_stack(
     provider,
+    aws_region: str,
     ingress_domain: str,
     ingress_class_name: str,
     storage_class_name: str,
@@ -746,6 +747,17 @@ def prometheus_stack(
     skip_await: bool = False,
     depends_on: list = [] )->Release:
 
+    s3_objstore_config = {
+        "type": "S3",
+        "config": {
+            "bucket": obj_storage_bucket,
+            "endpoint": f"s3.{aws_region}.amazonaws.com",
+            "aws_sdk_auth": True
+        }
+    }
+
+    s3_objstore_config_str = yaml.dump(s3_objstore_config, default_flow_style=False)
+
     sidecar_containers = [
         {
             "name": "thanos",
@@ -758,7 +770,7 @@ def prometheus_stack(
                 "--prometheus.url=http://localhost:9090",
                 "--http-address=0.0.0.0:10901",
                 "--grpc-address=0.0.0.0:10902",
-                f"--objstore.config=type: S3\nconfig:\n  bucket: {obj_storage_bucket}\n  endpoint: s3.eu-central-1.amazonaws.com\n  aws_sdk_auth: true\n"
+                f"--objstore.config={s3_objstore_config_str}",
             ],
             "env": [],
             "ports": [
