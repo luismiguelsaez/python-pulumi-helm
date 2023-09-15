@@ -1155,6 +1155,17 @@ def thanos_stack(
         query_affinity.update(karpenter_provisioner_affinity)
         storegateway_affinity.update(karpenter_provisioner_affinity)
 
+    s3_objstore_config = {
+        "type": "S3",
+        "config": {
+            "bucket": obj_storage_bucket,
+            "endpoint": f"s3.{aws_region}.amazonaws.com",
+            "aws_sdk_auth": True
+        }
+    }
+
+    s3_objstore_config_str = yaml.dump(s3_objstore_config, default_flow_style=False)
+    
     thanos_stack_release = release(
         name=name,
         chart=chart,
@@ -1168,14 +1179,7 @@ def thanos_stack(
         values={
             "fullnameOverride": name_override,
             "extraDeploy": [] + [karpenter_provisioner_obj] if karpenter_node_enabled else [],
-            "objstoreConfig": {
-                "type": "S3",
-                "config": {
-                    "bucket": obj_storage_bucket,
-                    "endpoint": f"s3.{aws_region}.amazonaws.com",
-                    "aws_sdk_auth": True
-                }
-            },
+            "objstoreConfig": s3_objstore_config_str,
             "query": {
                 "enabled": True,
                 "replicaCount": 3,
