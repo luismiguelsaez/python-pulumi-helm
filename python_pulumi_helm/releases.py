@@ -1,5 +1,6 @@
 from pulumi_kubernetes.helm.v3 import Release
 from .helpers.resources import release
+import yaml
 
 def cilium(
     provider,
@@ -1681,6 +1682,8 @@ def loki(
     replicas_read: int = 3,
     replicas_write: int = 3,
     replicas_backend: int = 3,
+    karpenter_node_enabled: bool = True,
+    karpenter_node_provider_name: str = "default",
     name_override: str = "",
     name: str = "loki",
     chart: str = "loki",
@@ -1689,6 +1692,55 @@ def loki(
     namespace: str = "default",
     skip_await: bool = False,
     depends_on: list = [] )->Release:
+
+    global_affinity = {
+        "nodeAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": {
+                "nodeSelectorTerms": [
+                    {
+                        "matchExpressions": [
+                            {
+                                "key": "app",
+                                "operator": "In",
+                                "values": ["loki"]
+                            }
+                        ],
+                    },
+                ],
+            },
+        },
+    }
+
+    global_affinity_str = yaml.dump(global_affinity, default_flow_style=False)
+
+    karpenter_provisioner_obj = {
+        "apiVersion": "karpenter.sh/v1alpha5",
+        "kind": "Provisioner",
+        "metadata": {
+            "labels": {
+                "app": "loki",
+            },
+            "name": "loki",
+        },
+        "spec": {
+            "consolidation": {
+                "enabled": True,
+            },
+            "labels": {
+                "app": "loki",
+            },
+            "taints": [],
+            "providerRef": {
+                "name": karpenter_node_provider_name,
+            },
+            "requirements": [
+                { "key": "karpenter.k8s.aws/instance-category", "operator": "In", "values": [ "t" ] },
+                { "key": "kubernetes.io/arch", "operator": "In", "values": [ "arm64" ] },
+                { "key": "kubernetes.io/os", "operator": "In", "values": [ "linux" ] },
+                { "key": "karpenter.sh/capacity-type", "operator": "In", "values": [ "spot", "on-demand" ] },
+            ],
+        },
+    }
 
     loki_release = release(
         name=name,
@@ -1756,23 +1808,7 @@ def loki(
                     "size": storage_size_write,
                     "storageClass": storage_class_name,
                 },
-                "affinity": {
-                    "nodeAffinity": {
-                        "requiredDuringSchedulingIgnoredDuringExecution": {
-                            "nodeSelectorTerms": [
-                                {
-                                    "matchExpressions": [
-                                        {
-                                            "key": "app",
-                                            "operator": "In",
-                                            "values": ["loki"]
-                                        }
-                                    ],
-                                },
-                            ],
-                        },
-                    },
-                },
+                "affinity": global_affinity_str,
             },
             "read": {
                 "replicas": replicas_read,
@@ -1780,23 +1816,7 @@ def loki(
                     "size": storage_size_read,
                     "storageClass": storage_class_name,
                 },
-                "affinity": {
-                    "nodeAffinity": {
-                        "requiredDuringSchedulingIgnoredDuringExecution": {
-                            "nodeSelectorTerms": [
-                                {
-                                    "matchExpressions": [
-                                        {
-                                            "key": "app",
-                                            "operator": "In",
-                                            "values": ["loki"]
-                                        }
-                                    ],
-                                },
-                            ],
-                        },
-                    },
-                },
+                "affinity": global_affinity_str,
             },
             "backend": {
                 "replicas": replicas_backend,
@@ -1804,54 +1824,12 @@ def loki(
                     "size": storage_size_backend,
                     "storageClass": storage_class_name,
                 },
-                "affinity": {
-                    "nodeAffinity": {
-                        "requiredDuringSchedulingIgnoredDuringExecution": {
-                            "nodeSelectorTerms": [
-                                {
-                                    "matchExpressions": [
-                                        {
-                                            "key": "app",
-                                            "operator": "In",
-                                            "values": ["loki"]
-                                        }
-                                    ],
-                                },
-                            ],
-                        },
-                    },
-                },
+                "affinity": global_affinity_str,
             },
-            "extraObjects": [
-                {
-                    "apiVersion": "karpenter.sh/v1alpha5",
-                    "kind": "Provisioner",
-                    "metadata": {
-                        "labels": {
-                            "app": "loki",
-                        },
-                        "name": "loki",
-                    },
-                    "spec": {
-                        "consolidation": {
-                            "enabled": True,
-                        },
-                        "labels": {
-                            "app": "loki",
-                        },
-                        "taints": [],
-                        "providerRef": {
-                            "name": "default",
-                        },
-                        "requirements": [
-                            { "key": "karpenter.k8s.aws/instance-category", "operator": "In", "values": [ "t" ] },
-                            { "key": "kubernetes.io/arch", "operator": "In", "values": [ "arm64" ] },
-                            { "key": "kubernetes.io/os", "operator": "In", "values": [ "linux" ] },
-                            { "key": "karpenter.sh/capacity-type", "operator": "In", "values": [ "spot", "on-demand" ] },
-                        ],
-                    },
-                },
-            ]
+            "test": {
+                "enabled": True,
+            },
+            "extraObjects": [] + [karpenter_provisioner_obj] if karpenter_node_enabled else [],
         }
     )
 
