@@ -1,5 +1,6 @@
 from pulumi_kubernetes.helm.v3 import Release
 from .helpers.resources import release
+import pulumi
 import yaml
 
 def cilium(
@@ -1700,7 +1701,8 @@ def loki(
             "config": {
                 "clients": [
                     {
-                        "url": f"http://loki-gateway.{namespace}.svc.cluster.local/loki/api/v1/push",
+                        #"url": f"http://loki-gateway.{namespace}.svc.cluster.local/loki/api/v1/push",
+                        "url": pulumi.Output.concat("http://loki-gateway.", namespace, ".svc.cluster.local/loki/api/v1/push"),
                         "tenant_id": "default",
                     }
                 ]
