@@ -1726,17 +1726,17 @@ def loki(
         provider=provider,
         values={
             "fullnameOverride": name_override,
+            "serviceAccount": {
+                "create": True,
+                "annotations": {
+                    "eks.amazonaws.com/role-arn": eks_sa_role_arn,
+                },
+            },
             "loki": {
                 "podLabels": {
                     "app": "loki",
                 },
                 "serviceLabels": {},
-                "serviceAccount": {
-                    "create": True,
-                    "annotations": {
-                        "eks.amazonaws.com/role-arn": eks_sa_role_arn,
-                    },
-                },
                 "auth_enabled": False,
                 "monitoring": {
                     "dashboards": {
