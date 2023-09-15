@@ -467,6 +467,7 @@ def argocd(
     argocd_redis_ha_haproxy_enabled: bool = False,
     argocd_application_controller_replicas: int = 2,
     argocd_applicationset_controller_replicas: int = 2,
+    karpenter_node_enabled: bool = False,
     name: str = "argo-cd",
     chart: str = "argo-cd",
     version: str = "5.46.0",
@@ -474,6 +475,101 @@ def argocd(
     namespace: str = "default",
     skip_await: bool = False,
     depends_on: list = [] )->Release:
+
+    karpenter_provisioner_objs = [
+        {
+            "apiVersion": "karpenter.sh/v1alpha5",
+            "kind": "Provisioner",
+            "metadata": {
+                "labels": {
+                    "app": "argo-cd",
+                },
+                "name": "argo-cd",
+            },
+            "spec": {
+                "consolidation": {
+                    "enabled": True,
+                },
+                "labels": {
+                    "app": "argo-cd",
+                },
+                "taints": [],
+                "providerRef": {
+                    "name": "default",
+                },
+                "requirements": [
+                    { "key": "karpenter.k8s.aws/instance-category", "operator": "In", "values": [ "t" ] },
+                    { "key": "karpenter.k8s.aws/instance-cpu", "operator": "In", "values": [ "2" ] },
+                    { "key": "karpenter.k8s.aws/instance-memory", "operator": "In", "values": [ "4096" ] },
+                    { "key": "kubernetes.io/arch", "operator": "In", "values": [ "arm64" ] },
+                    { "key": "kubernetes.io/os", "operator": "In", "values": [ "linux" ] },
+                    { "key": "karpenter.sh/capacity-type", "operator": "In", "values": [ "spot", "on-demand" ] },
+                ],
+            },
+        },
+        {
+            "apiVersion": "karpenter.sh/v1alpha5",
+            "kind": "Provisioner",
+            "metadata": {
+                "labels": {
+                    "app": "redis",
+                },
+                "name": "redis",
+            },
+            "spec": {
+                "consolidation": {
+                    "enabled": True,
+                },
+                "labels": {
+                    "app": "redis",
+                },
+                "taints": [],
+                "providerRef": {
+                    "name": "default",
+                },
+                "requirements": [
+                    { "key": "karpenter.k8s.aws/instance-category", "operator": "In", "values": [ "t" ] },
+                    { "key": "karpenter.k8s.aws/instance-cpu", "operator": "In", "values": [ "2" ] },
+                    { "key": "karpenter.k8s.aws/instance-memory", "operator": "In", "values": [ "2048" ] },
+                    { "key": "kubernetes.io/arch", "operator": "In", "values": [ "arm64" ] },
+                    { "key": "kubernetes.io/os", "operator": "In", "values": [ "linux" ] },
+                    { "key": "karpenter.sh/capacity-type", "operator": "In", "values": [ "spot", "on-demand" ] },
+                ],
+            },
+        },
+    ]
+
+    karpenter_provisioner_affinity_global = {
+        "podAntiAffinity": "soft",
+        "nodeAffinity": {
+            "type": "hard",
+            "matchExpressions": [
+                {
+                    "key": "app",
+                    "operator": "In",
+                    "values": ["argo-cd"]
+                },
+            ],
+        },
+    }
+
+    karpenter_provisioner_affinity_redis = {
+        "nodeAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": {
+                "nodeSelectorTerms": [
+                    {
+                        "matchExpressions": [
+                            {
+                                "key": "app",
+                                "operator": "In",
+                                "values": ["redis"]
+                            }
+                        ],
+                    },
+                ],
+            },
+        },
+    }
 
     argocd_release = release(
         name=name,
@@ -491,19 +587,7 @@ def argocd(
                     "app": "argo-cd"
                 },
                 "revisionHistoryLimit": 3,
-                "affinity": {
-                    "podAntiAffinity": "soft",
-                    "nodeAffinity": {
-                        "type": "hard",
-                        "matchExpressions": [
-                            {
-                                "key": "app",
-                                "operator": "In",
-                                "values": ["argo-cd"]
-                            },
-                        ],
-                    },
-                },
+                "affinity": {}.update(karpenter_provisioner_affinity_global if karpenter_node_enabled else {}),
             },
             "configs": {
                 "cm": {
@@ -544,23 +628,7 @@ def argocd(
                         "memory": "512Mi"
                     }
                 },
-                "affinity": {
-                    "nodeAffinity": {
-                        "requiredDuringSchedulingIgnoredDuringExecution": {
-                            "nodeSelectorTerms": [
-                                {
-                                    "matchExpressions": [
-                                        {
-                                            "key": "app",
-                                            "operator": "In",
-                                            "values": ["redis"]
-                                        }
-                                    ],
-                                },
-                            ],
-                        },
-                    },
-                },
+                "affinity": {}.update(karpenter_provisioner_affinity_redis if karpenter_node_enabled else {}),
             },
             "redis-ha": {
                 "enabled": argocd_redis_ha_enabled,
@@ -682,68 +750,7 @@ def argocd(
             "applicationSet": {
                 "replicas": argocd_applicationset_controller_replicas,
             },
-            "extraObjects": [
-                {
-                    "apiVersion": "karpenter.sh/v1alpha5",
-                    "kind": "Provisioner",
-                    "metadata": {
-                        "labels": {
-                            "app": "argo-cd",
-                        },
-                        "name": "argo-cd",
-                    },
-                    "spec": {
-                        "consolidation": {
-                            "enabled": True,
-                        },
-                        "labels": {
-                            "app": "argo-cd",
-                        },
-                        "taints": [],
-                        "providerRef": {
-                            "name": "default",
-                        },
-                        "requirements": [
-                            { "key": "karpenter.k8s.aws/instance-category", "operator": "In", "values": [ "t" ] },
-                            { "key": "karpenter.k8s.aws/instance-cpu", "operator": "In", "values": [ "2" ] },
-                            { "key": "karpenter.k8s.aws/instance-memory", "operator": "In", "values": [ "4096" ] },
-                            { "key": "kubernetes.io/arch", "operator": "In", "values": [ "arm64" ] },
-                            { "key": "kubernetes.io/os", "operator": "In", "values": [ "linux" ] },
-                            { "key": "karpenter.sh/capacity-type", "operator": "In", "values": [ "spot", "on-demand" ] },
-                        ],
-                    },
-                },
-                {
-                    "apiVersion": "karpenter.sh/v1alpha5",
-                    "kind": "Provisioner",
-                    "metadata": {
-                        "labels": {
-                            "app": "redis",
-                        },
-                        "name": "redis",
-                    },
-                    "spec": {
-                        "consolidation": {
-                            "enabled": True,
-                        },
-                        "labels": {
-                            "app": "redis",
-                        },
-                        "taints": [],
-                        "providerRef": {
-                            "name": "default",
-                        },
-                        "requirements": [
-                            { "key": "karpenter.k8s.aws/instance-category", "operator": "In", "values": [ "t" ] },
-                            { "key": "karpenter.k8s.aws/instance-cpu", "operator": "In", "values": [ "2" ] },
-                            { "key": "karpenter.k8s.aws/instance-memory", "operator": "In", "values": [ "2048" ] },
-                            { "key": "kubernetes.io/arch", "operator": "In", "values": [ "arm64" ] },
-                            { "key": "kubernetes.io/os", "operator": "In", "values": [ "linux" ] },
-                            { "key": "karpenter.sh/capacity-type", "operator": "In", "values": [ "spot", "on-demand" ] },
-                        ],
-                    },
-                },
-            ],
+            "extraObjects": karpenter_provisioner_objs if karpenter_node_enabled else [],
         }
     )
 
@@ -759,6 +766,7 @@ def prometheus_stack(
     prometheus_tsdb_retention: str = "30d",
     prometheus_external_label_env: str = "dev",
     prometheus_crds_enabled: bool = True,
+    karpenter_node_enabled: bool = False,
     obj_storage_bucket: str = "",
     name_override: str = "prom-stack",
     name: str = "kube-prometheus-stack",
@@ -810,6 +818,52 @@ def prometheus_stack(
             }
         }
     ]
+
+    karpenter_provisioner_obj = {
+        "apiVersion": "karpenter.sh/v1alpha5",
+        "kind": "Provisioner",
+        "metadata": {
+            "labels": {
+                "app": "prometheus"
+            },
+            "name": "prometheus"
+        },
+        "spec": {
+            "consolidation": {
+                "enabled": False
+            },
+            "ttlSecondsAfterEmpty": 30,
+            "ttlSecondsUntilExpired": 2592000,
+            "labels": {
+                "karpenter": "enabled",
+                "app": "prometheus"
+            },
+            "taints": [],
+            "providerRef": {
+                "name": "bottlerocket"
+            },
+            "requirements": [
+                { "key": "karpenter.k8s.aws/instance-category", "operator": "In", "values": ["t"] },
+                { "key": "kubernetes.io/arch", "operator": "In", "values": ["amd64", "arm64"] },
+                { "key": "kubernetes.io/os", "operator": "In", "values": ["linux"] },
+                { "key": "karpenter.sh/capacity-type", "operator": "In", "values": ["on-demand"] }
+            ]
+        }
+    }
+
+    karpenter_provisoner_affinity = {
+        "nodeAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": {
+                "nodeSelectorTerms": [
+                    {
+                        "matchExpressions": [
+                            { "key": "app", "operator": "In", "values": ["prometheus"] }
+                        ]
+                    }
+                ]
+            }
+        }
+    }
 
     prometheus_stack_release = release(
         name=name,
@@ -905,19 +959,7 @@ def prometheus_stack(
                             "memory": "4096Mi"
                         }
                     },
-                    "affinity": {
-                        "nodeAffinity": {
-                            "requiredDuringSchedulingIgnoredDuringExecution": {
-                                "nodeSelectorTerms": [
-                                    {
-                                        "matchExpressions": [
-                                            { "key": "app", "operator": "In", "values": ["prometheus"] }
-                                        ]
-                                    }
-                                ]
-                            }
-                        }
-                    },
+                    "affinity": {}.update(karpenter_provisoner_affinity if karpenter_node_enabled else {}),
                     "tolerations": [],
                     "podMetadata": {
                         "labels": {
@@ -1032,41 +1074,7 @@ def prometheus_stack(
             "nodeExporter": {
                 "enabled": True
             },
-            "extraManifests": [
-                {
-                    "apiVersion": "karpenter.sh/v1alpha5",
-                    "kind": "Provisioner",
-                    "metadata": {
-                        "labels": {
-                            "app": "prometheus"
-                        },
-                        "name": "prometheus"
-                    },
-                    "spec": {
-                        "consolidation": {
-                            "enabled": False
-                        },
-                        "ttlSecondsAfterEmpty": 30,
-                        "ttlSecondsUntilExpired": 2592000,
-                        "labels": {
-                            "karpenter": "enabled",
-                            "app": "prometheus"
-                        },
-                        "taints": [],
-                        "providerRef": {
-                            "name": "bottlerocket"
-                        },
-                        "requirements": [
-                            { "key": "karpenter.k8s.aws/instance-category", "operator": "In", "values": ["t"] },
-                            { "key": "karpenter.k8s.aws/instance-cpu", "operator": "In", "values": ["2"] },
-                            { "key": "karpenter.k8s.aws/instance-memory", "operator": "In", "values": ["4096"] },
-                            { "key": "kubernetes.io/arch", "operator": "In", "values": ["amd64", "arm64"] },
-                            { "key": "kubernetes.io/os", "operator": "In", "values": ["linux"] },
-                            { "key": "karpenter.sh/capacity-type", "operator": "In", "values": ["on-demand"] }
-                        ]
-                    }
-                }
-            ]
+            "extraManifests": [] + [karpenter_provisioner_obj] if karpenter_node_enabled else [],
         }
     )
 
@@ -1084,6 +1092,7 @@ def thanos_stack(
     compactor_retention_resolution_raw: str = "30d",
     compactor_retention_resolution_5m: str = "90d",
     compactor_retention_resolution_1h: str = "1y",
+    karpenter_node_enabled: bool = False,
     name_override: str = "",
     name: str = "thanos",
     chart: str = "thanos",
@@ -1092,6 +1101,56 @@ def thanos_stack(
     namespace: str = "default",
     skip_await: bool = False,
     depends_on: list = [] )->Release:
+
+    karpenter_provisioner_obj = {
+        "apiVersion": "karpenter.sh/v1alpha5",
+        "kind": "Provisioner",
+        "metadata": {
+            "labels": {
+                "app": "thanos"
+            },
+            "name": "thanos"
+        },
+        "spec": {
+            "consolidation": {
+                "enabled": True
+            },
+            "labels": {
+                "karpenter": "enabled",
+                "app": "thanos"
+            },
+            "taints": [],
+            "providerRef": {
+                "name": "bottlerocket"
+            },
+            "requirements": [
+                { "key": "karpenter.k8s.aws/instance-category", "operator": "In", "values": ["t"] },
+                { "key": "kubernetes.io/arch", "operator": "In", "values": ["arm64"] },
+                { "key": "kubernetes.io/os", "operator": "In", "values": ["linux"] },
+                { "key": "karpenter.sh/capacity-type", "operator": "In", "values": ["on-demand"] },
+            ]
+        }
+    }
+
+    karpenter_provisoner_affinity = {
+        "nodeAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": {
+                "nodeSelectorTerms": [
+                    {
+                        "matchExpressions": [
+                            {
+                                "key": "app",
+                                "operator": "In",
+                                "values": [
+                                    "thanos"
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    }
 
     thanos_stack_release = release(
         name=name,
@@ -1105,39 +1164,7 @@ def thanos_stack(
         provider=provider,
         values={
             "fullnameOverride": name_override,
-            "extraDeploy": [
-                {
-                    "apiVersion": "karpenter.sh/v1alpha5",
-                    "kind": "Provisioner",
-                    "metadata": {
-                        "labels": {
-                            "app": "thanos"
-                        },
-                        "name": "thanos"
-                    },
-                    "spec": {
-                        "consolidation": {
-                            "enabled": True
-                        },
-                        "labels": {
-                            "karpenter": "enabled",
-                            "app": "thanos"
-                        },
-                        "taints": [],
-                        "providerRef": {
-                            "name": "bottlerocket"
-                        },
-                        "requirements": [
-                            { "key": "karpenter.k8s.aws/instance-category", "operator": "In", "values": ["t"] },
-                            { "key": "karpenter.k8s.aws/instance-cpu", "operator": "In", "values": ["2"] },
-                            { "key": "karpenter.k8s.aws/instance-memory", "operator": "In", "values": ["4096"] },
-                            { "key": "kubernetes.io/arch", "operator": "In", "values": ["arm64"] },
-                            { "key": "kubernetes.io/os", "operator": "In", "values": ["linux"] },
-                            { "key": "karpenter.sh/capacity-type", "operator": "In", "values": ["on-demand"] },
-                        ]
-                    }
-                }
-            ],
+            "extraDeploy": [] + [karpenter_provisioner_obj] if karpenter_node_enabled else [],
             "objstoreConfig": {
                 "type": "S3",
                 "config": {
@@ -1203,23 +1230,6 @@ def thanos_stack(
                     }
                 },
                 "affinity": {
-                    "nodeAffinity": {
-                        "requiredDuringSchedulingIgnoredDuringExecution": {
-                            "nodeSelectorTerms": [
-                                {
-                                    "matchExpressions": [
-                                        {
-                                            "key": "app",
-                                            "operator": "In",
-                                            "values": [
-                                                "thanos"
-                                            ]
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    },
                     "podAntiAffinity": {
                         "requiredDuringSchedulingIgnoredDuringExecution": [
                             {
@@ -1232,7 +1242,7 @@ def thanos_stack(
                             }
                         ]
                     }
-                },
+                }.update(karpenter_provisoner_affinity if karpenter_node_enabled else {}),
                 "topologySpreadConstraints": [
                     {
                         "maxSkew": 1,
@@ -1300,25 +1310,7 @@ def thanos_stack(
                         "cpu": "100m"
                     }
                 },
-                "affinity": {
-                    "nodeAffinity": {
-                        "requiredDuringSchedulingIgnoredDuringExecution": {
-                            "nodeSelectorTerms": [
-                                {
-                                    "matchExpressions": [
-                                        {
-                                            "key": "app",
-                                            "operator": "In",
-                                            "values": [
-                                                "thanos"
-                                            ]
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    }
-                }
+                "affinity": {} + karpenter_provisoner_affinity if karpenter_node_enabled else {}
             },
             "compactor": {
                 "enabled": compactor_enabled,
@@ -1347,25 +1339,7 @@ def thanos_stack(
                         "cpu": "500m"
                     }
                 },
-                "affinity": {
-                    "nodeAffinity": {
-                        "requiredDuringSchedulingIgnoredDuringExecution": {
-                            "nodeSelectorTerms": [
-                                {
-                                    "matchExpressions": [
-                                        {
-                                            "key": "app",
-                                            "operator": "In",
-                                            "values": [
-                                                "thanos"
-                                            ]
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    }
-                }
+                "affinity": {}.update(karpenter_provisoner_affinity if karpenter_node_enabled else {}),
             },
             "storegateway": {
                 "enabled": True,
@@ -1421,23 +1395,6 @@ def thanos_stack(
                     }
                 },
                 "affinity": {
-                    "nodeAffinity": {
-                        "requiredDuringSchedulingIgnoredDuringExecution": {
-                            "nodeSelectorTerms": [
-                                {
-                                    "matchExpressions": [
-                                        {
-                                            "key": "app",
-                                            "operator": "In",
-                                            "values": [
-                                                "thanos"
-                                            ]
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    },
                     "podAntiAffinity": {
                         "requiredDuringSchedulingIgnoredDuringExecution": [
                             {
@@ -1450,7 +1407,7 @@ def thanos_stack(
                             }
                         ]
                     }
-                },
+                }.update(karpenter_provisoner_affinity if karpenter_node_enabled else {}),
                 "topologySpreadConstraints": [
                     {
                         "maxSkew": 1,
