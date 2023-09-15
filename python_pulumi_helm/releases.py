@@ -959,7 +959,7 @@ def prometheus_stack(
                             "memory": "4096Mi"
                         }
                     },
-                    "affinity": {}.update(karpenter_provisoner_affinity if karpenter_node_enabled else {}),
+                    "affinity": karpenter_provisoner_affinity if karpenter_node_enabled else {},
                     "tolerations": [],
                     "podMetadata": {
                         "labels": {
