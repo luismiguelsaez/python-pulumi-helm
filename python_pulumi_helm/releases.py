@@ -1683,6 +1683,9 @@ def loki(
     replicas_write: int = 3,
     replicas_backend: int = 3,
     replicas_gateway: int = 3,
+    autoscaling_enabled: bool = False,
+    autoscaling_min_replicas: int = 2,
+    autoscaling_max_replicas: int = 5,
     karpenter_node_enabled: bool = True,
     karpenter_node_provider_name: str = "default",
     name_override: str = "",
@@ -1760,7 +1763,7 @@ def loki(
             "config": {
                 "clients": [
                     {
-                        "url": f"http://{'loki' if name_override != '' else name_override}-gateway.{namespace}.svc.cluster.local/loki/api/v1/push",
+                        "url": f"http://loki-gateway.{namespace}.svc.cluster.local/loki/api/v1/push",
                         "tenant_id": "default",
                     }
                 ]
@@ -1833,6 +1836,13 @@ def loki(
             },
             "write": {
                 "replicas": replicas_write,
+                "autoscaling": {
+                    "enabled": autoscaling_enabled,
+                    "minReplicas": autoscaling_min_replicas,
+                    "maxReplicas": autoscaling_max_replicas,
+                    "targetCPUUtilizationPercentage": 60,
+                    "behavior": {},
+                },
                 "persistence": {
                     "size": storage_size_write,
                     "storageClass": storage_class_name,
@@ -1841,6 +1851,13 @@ def loki(
             },
             "read": {
                 "replicas": replicas_read,
+                "autoscaling": {
+                    "enabled": autoscaling_enabled,
+                    "minReplicas": autoscaling_min_replicas,
+                    "maxReplicas": autoscaling_max_replicas,
+                    "targetCPUUtilizationPercentage": 60,
+                    "behavior": {},
+                },
                 "persistence": {
                     "size": storage_size_read,
                     "storageClass": storage_class_name,
@@ -1849,6 +1866,13 @@ def loki(
             },
             "backend": {
                 "replicas": replicas_backend,
+                "autoscaling": {
+                    "enabled": autoscaling_enabled,
+                    "minReplicas": autoscaling_min_replicas,
+                    "maxReplicas": autoscaling_max_replicas,
+                    "targetCPUUtilizationPercentage": 60,
+                    "behavior": {},
+                },
                 "persistence": {
                     "size": storage_size_backend,
                     "storageClass": storage_class_name,
@@ -1861,6 +1885,13 @@ def loki(
             "gateway": {
                 "enabled": True,
                 "replicas": replicas_gateway,
+                "autoscaling": {
+                    "enabled": autoscaling_enabled,
+                    "minReplicas": autoscaling_min_replicas,
+                    "maxReplicas": autoscaling_max_replicas,
+                    "targetCPUUtilizationPercentage": 60,
+                    "behavior": {},
+                },
                 "affinity": global_affinity_str,
             },
             "extraObjects": [] + [karpenter_provisioner_obj] if karpenter_node_enabled else [],
