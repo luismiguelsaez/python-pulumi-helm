@@ -1132,7 +1132,7 @@ def thanos_stack(
         }
     }
 
-    karpenter_provisoner_affinity = {
+    karpenter_provisioner_affinity = {
         "nodeAffinity": {
             "requiredDuringSchedulingIgnoredDuringExecution": {
                 "nodeSelectorTerms": [
@@ -1151,6 +1151,40 @@ def thanos_stack(
             }
         }
     }
+    
+    query_affinity = {
+        "podAntiAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": [
+                {
+                    "topologyKey": "kubernetes.io/hostname",
+                    "labelSelector": {
+                        "matchLabels": {
+                            "app": "thanos-query"
+                        }
+                    }
+                }
+            ]
+        }
+    }
+    
+    storegateway_affinity = {
+        "podAntiAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": [
+                {
+                    "topologyKey": "kubernetes.io/hostname",
+                    "labelSelector": {
+                        "matchLabels": {
+                            "app": "thanos-storegateway"
+                        }
+                    }
+                }
+            ]
+        }
+    }
+    
+    if karpenter_node_enabled:
+        query_affinity.update(karpenter_provisioner_affinity)
+        storegateway_affinity.update(karpenter_provisioner_affinity)
 
     thanos_stack_release = release(
         name=name,
@@ -1229,20 +1263,7 @@ def thanos_stack(
                         "cpu": 1
                     }
                 },
-                "affinity": {
-                    "podAntiAffinity": {
-                        "requiredDuringSchedulingIgnoredDuringExecution": [
-                            {
-                                "topologyKey": "kubernetes.io/hostname",
-                                "labelSelector": {
-                                    "matchLabels": {
-                                        "app": "thanos-query"
-                                    }
-                                }
-                            }
-                        ]
-                    }
-                }.update(karpenter_provisoner_affinity if karpenter_node_enabled else {}),
+                "affinity": query_affinity,
                 "topologySpreadConstraints": [
                     {
                         "maxSkew": 1,
@@ -1310,7 +1331,7 @@ def thanos_stack(
                         "cpu": "100m"
                     }
                 },
-                "affinity": karpenter_provisoner_affinity if karpenter_node_enabled else {},
+                "affinity": karpenter_provisioner_affinity if karpenter_node_enabled else {},
             },
             "compactor": {
                 "enabled": compactor_enabled,
@@ -1339,7 +1360,7 @@ def thanos_stack(
                         "cpu": "500m"
                     }
                 },
-                "affinity": karpenter_provisoner_affinity if karpenter_node_enabled else {},
+                "affinity": karpenter_provisioner_affinity if karpenter_node_enabled else {},
             },
             "storegateway": {
                 "enabled": True,
@@ -1394,20 +1415,7 @@ def thanos_stack(
                         "cpu": 1
                     }
                 },
-                "affinity": {
-                    "podAntiAffinity": {
-                        "requiredDuringSchedulingIgnoredDuringExecution": [
-                            {
-                                "topologyKey": "kubernetes.io/hostname",
-                                "labelSelector": {
-                                    "matchLabels": {
-                                        "app": "thanos-storegateway"
-                                    }
-                                }
-                            }
-                        ]
-                    }
-                }.update(karpenter_provisoner_affinity if karpenter_node_enabled else {}),
+                "affinity": storegateway_affinity,
                 "topologySpreadConstraints": [
                     {
                         "maxSkew": 1,
