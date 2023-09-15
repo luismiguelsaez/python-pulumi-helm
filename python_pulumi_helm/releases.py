@@ -1310,7 +1310,7 @@ def thanos_stack(
                         "cpu": "100m"
                     }
                 },
-                "affinity": {} + karpenter_provisoner_affinity if karpenter_node_enabled else {}
+                "affinity": karpenter_provisoner_affinity if karpenter_node_enabled else {},
             },
             "compactor": {
                 "enabled": compactor_enabled,
@@ -1339,7 +1339,7 @@ def thanos_stack(
                         "cpu": "500m"
                     }
                 },
-                "affinity": {}.update(karpenter_provisoner_affinity if karpenter_node_enabled else {}),
+                "affinity": karpenter_provisoner_affinity if karpenter_node_enabled else {},
             },
             "storegateway": {
                 "enabled": True,
