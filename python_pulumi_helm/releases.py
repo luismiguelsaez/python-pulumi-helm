@@ -1080,6 +1080,10 @@ def thanos_stack(
     storage_class_name: str,
     eks_sa_role_arn: str = "",
     obj_storage_bucket: str = "",
+    compactor_enabled: bool = False,
+    compactor_retention_resolution_raw: str = "30d",
+    compactor_retention_resolution_5m: str = "90d",
+    compactor_retention_resolution_1h: str = "1y",
     name_override: str = "",
     name: str = "thanos",
     chart: str = "thanos",
@@ -1317,15 +1321,15 @@ def thanos_stack(
                 }
             },
             "compactor": {
-                "enabled": True,
+                "enabled": compactor_enabled,
                 "podLabels": {
                     "app": "thanos-compactor"
                 },
                 "logLevel": "info",
                 "logFormat": "logfmt",
-                "retentionResolutionRaw": "7d",
-                "retentionResolution5m": "30d",
-                "retentionResolution1h": "1y",
+                "retentionResolutionRaw": compactor_retention_resolution_raw,
+                "retentionResolution5m": compactor_retention_resolution_5m,
+                "retentionResolution1h": compactor_retention_resolution_1h,
                 "consistencyDelay": "30m",
                 "serviceAccount": {
                     "create": True,
