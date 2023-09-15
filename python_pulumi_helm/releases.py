@@ -832,7 +832,7 @@ def prometheus_stack(
         }
     }
 
-    karpenter_provisoner_affinity = {
+    karpenter_provisioner_affinity = {
         "nodeAffinity": {
             "requiredDuringSchedulingIgnoredDuringExecution": {
                 "nodeSelectorTerms": [
@@ -843,8 +843,26 @@ def prometheus_stack(
                     }
                 ]
             }
+        },
+    }
+
+    prom_server_affinity = {
+        "podAntiAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": [
+                {
+                    "topologyKey": "kubernetes.io/hostname",
+                    "labelSelector": {
+                        "matchLabels": {
+                            "app": "prometheus"
+                        }
+                    }
+                }
+            ]
         }
     }
+    
+    if karpenter_node_enabled:
+        prom_server_affinity.update(karpenter_provisioner_affinity)
 
     prometheus_stack_release = release(
         name=name,
@@ -940,7 +958,7 @@ def prometheus_stack(
                             "memory": "4096Mi"
                         }
                     },
-                    "affinity": karpenter_provisoner_affinity if karpenter_node_enabled else {},
+                    "affinity": prom_server_affinity,
                     "tolerations": [],
                     "podMetadata": {
                         "labels": {
