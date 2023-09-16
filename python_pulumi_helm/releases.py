@@ -1669,7 +1669,7 @@ def loki(
     skip_await: bool = False,
     depends_on: list = [] )->(Release, Release):
 
-    global_affinity = {
+    karpenter_provisioner_affinity = {
         "nodeAffinity": {
             "requiredDuringSchedulingIgnoredDuringExecution": {
                 "nodeSelectorTerms": [
@@ -1686,8 +1686,77 @@ def loki(
             },
         },
     }
+    
+    read_affinity = {
+        "podAntiAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": [
+                {
+                    "topologyKey": "kubernetes.io/hostname",
+                    "labelSelector": {
+                        "matchLabels": {
+                            "app.kubernetes.io/component": "read"
+                        }
+                    }
+                }
+            ]
+        }
+    }
 
-    global_affinity_str = yaml.dump(global_affinity, default_flow_style=False)
+    write_affinity = {
+        "podAntiAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": [
+                {
+                    "topologyKey": "kubernetes.io/hostname",
+                    "labelSelector": {
+                        "matchLabels": {
+                            "app.kubernetes.io/component": "write"
+                        }
+                    }
+                }
+            ]
+        }
+    }
+
+    backend_affinity = {
+        "podAntiAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": [
+                {
+                    "topologyKey": "kubernetes.io/hostname",
+                    "labelSelector": {
+                        "matchLabels": {
+                            "app.kubernetes.io/component": "backend"
+                        }
+                    }
+                }
+            ]
+        }
+    }
+
+    gateway_affinity = {
+        "podAntiAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": [
+                {
+                    "topologyKey": "kubernetes.io/hostname",
+                    "labelSelector": {
+                        "matchLabels": {
+                            "app.kubernetes.io/component": "gateway"
+                        }
+                    }
+                }
+            ]
+        }
+    }
+
+    if karpenter_node_enabled:
+        read_affinity.update(karpenter_provisioner_affinity)
+        write_affinity.update(karpenter_provisioner_affinity)
+        backend_affinity.update(karpenter_provisioner_affinity)
+        gateway_affinity.update(karpenter_provisioner_affinity)
+
+    read_affinity_str = yaml.dump(read_affinity, default_flow_style=False)
+    write_affinity_str = yaml.dump(write_affinity, default_flow_style=False)
+    backend_affinity_str = yaml.dump(backend_affinity, default_flow_style=False)
+    gateway_affinity_str = yaml.dump(gateway_affinity, default_flow_style=False)
 
     karpenter_provisioner_obj = {
         "apiVersion": "karpenter.sh/v1alpha5",
@@ -1827,7 +1896,7 @@ def loki(
                     "size": storage_size_write,
                     "storageClass": storage_class_name,
                 },
-                "affinity": global_affinity_str,
+                "affinity": write_affinity_str,
             },
             "read": {
                 "replicas": replicas_read,
@@ -1842,7 +1911,7 @@ def loki(
                     "size": storage_size_read,
                     "storageClass": storage_class_name,
                 },
-                "affinity": global_affinity_str,
+                "affinity": read_affinity_str,
             },
             "backend": {
                 "replicas": replicas_backend,
@@ -1857,7 +1926,7 @@ def loki(
                     "size": storage_size_backend,
                     "storageClass": storage_class_name,
                 },
-                "affinity": global_affinity_str,
+                "affinity": backend_affinity_str,
             },
             "test": {
                 "enabled": True,
@@ -1872,7 +1941,7 @@ def loki(
                     "targetCPUUtilizationPercentage": 60,
                     "behavior": {},
                 },
-                "affinity": global_affinity_str,
+                "affinity": gateway_affinity_str,
             },
             "extraObjects": [] + [karpenter_provisioner_obj] if karpenter_node_enabled else [],
         }
