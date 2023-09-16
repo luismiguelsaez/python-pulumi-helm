@@ -1784,16 +1784,16 @@ def loki(
                 },
                 "storage": {
                     "bucketNames": {
-                        "chunks": obj_storage_bucket if obj_storage_bucket == "" else "chunks",
-                        "ruler": obj_storage_bucket if obj_storage_bucket == "" else "ruler",
-                        "admin": obj_storage_bucket if obj_storage_bucket == "" else "admin"
+                        "chunks": obj_storage_bucket if obj_storage_bucket != "" else "chunks",
+                        "ruler": obj_storage_bucket if obj_storage_bucket != "" else "ruler",
+                        "admin": obj_storage_bucket if obj_storage_bucket != "" else "admin"
                     },
                     "type": "s3" if obj_storage_bucket != "" else "filesystem",
                     # https://grafana.com/docs/loki/latest/storage/#aws-deployment-s3-single-store
                     "s3": {
-                        "s3": f"s3://{aws_region}" if obj_storage_bucket == "" else "null",
+                        "s3": f"s3://{aws_region}" if obj_storage_bucket != "" else "null",
                         "bucketname": obj_storage_bucket if obj_storage_bucket != "" else "null",
-                        "endpoint": f"s3.{aws_region}.amazonaws.com" if obj_storage_bucket == "" else "null",
+                        "endpoint": f"s3.{aws_region}.amazonaws.com" if obj_storage_bucket != "" else "null",
                         "region": aws_region if obj_storage_bucket != "" else "null",
                     },
                 }
