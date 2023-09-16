@@ -1859,6 +1859,7 @@ def loki(
                     },
                     "type": "s3" if obj_storage_bucket != "" else "filesystem",
                     # https://grafana.com/docs/loki/latest/storage/#aws-deployment-s3-single-store
+                    # https://github.com/grafana/loki/issues/5437
                     "s3": {
                         "s3": f"s3://{aws_region}/{obj_storage_bucket}" if obj_storage_bucket != "" else "null",
                     },
