@@ -1648,6 +1648,7 @@ def loki(
     storage_size_read: str = "5Gi",
     storage_size_write: str = "5Gi",
     storage_size_backend: str = "5Gi",
+    tablemanager_retention_period: str = "7d",
     eks_sa_role_arn: str = "",
     obj_storage_bucket: str = "",
     metrics_enabled: bool = False,
@@ -1851,6 +1852,10 @@ def loki(
                         "enabled": True,
                     },
                 },
+                "compactor": {},
+                "analytics": {},
+                "querier": {},
+                "ingester": {},
                 "storage": {
                     "bucketNames": {
                         "chunks": obj_storage_bucket if obj_storage_bucket != "" else "chunks",
@@ -1864,6 +1869,11 @@ def loki(
                         "s3": f"s3://{aws_region}/{obj_storage_bucket}" if obj_storage_bucket != "" else "null",
                     },
                 }
+            },
+            "tableManager:": {
+                "enabled": True,
+                "retention_deletes_enabled": True,
+                "retention_period": tablemanager_retention_period,
             },
             "ingress": {
                 "enabled": True,
