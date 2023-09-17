@@ -1874,6 +1874,7 @@ def loki(
                 "enabled": True,
                 "retention_deletes_enabled": True,
                 "retention_period": tablemanager_retention_period,
+                "affinity": karpenter_provisioner_affinity if karpenter_node_enabled else {},
             },
             "ingress": {
                 "enabled": True,
