@@ -1852,6 +1852,22 @@ def loki(
                         "enabled": True,
                     },
                 },
+                "memcached": {
+                    "chunk_cache": {
+                        "enabled": True,
+                        "host": "",
+                        "service": "memcached-client",
+                        "batch_size": 256,
+                        "parallelism": 10
+                    },
+                    "results_cache": {
+                        "enabled": True,
+                        "host": "",
+                        "service": "memcached-client",
+                        "timeout": "500ms",
+                        "default_validity": "12h"
+                    }
+                },
                 "compactor": {},
                 "analytics": {},
                 "querier": {},
@@ -1867,6 +1883,10 @@ def loki(
                     # https://github.com/grafana/loki/issues/5437
                     "s3": {
                         "s3": f"s3://{aws_region}/{obj_storage_bucket}" if obj_storage_bucket != "" else "null",
+                    },
+                    "filesystem": {
+                        "chunks_directory": "/data/loki/chunks",
+                        "rules_directory": "/data/loki/rules",
                     },
                 }
             },
