@@ -1913,7 +1913,7 @@ def loki(
                 ]
             },
             "write": {
-                "replicas": replicas_write,
+                "replicas": replicas_write if obj_storage_bucket != "" else 1,
                 "autoscaling": {
                     "enabled": autoscaling_enabled if obj_storage_bucket != "" else False,
                     "minReplicas": autoscaling_min_replicas,
@@ -1928,7 +1928,7 @@ def loki(
                 "affinity": write_affinity_str,
             },
             "read": {
-                "replicas": replicas_read,
+                "replicas": replicas_read if obj_storage_bucket != "" else 1,
                 "autoscaling": {
                     "enabled": autoscaling_enabled if obj_storage_bucket != "" else False,
                     "minReplicas": autoscaling_min_replicas,
@@ -1943,7 +1943,7 @@ def loki(
                 "affinity": read_affinity_str,
             },
             "backend": {
-                "replicas": replicas_backend,
+                "replicas": replicas_backend if obj_storage_bucket != "" else 1,
                 "autoscaling": {
                     "enabled": autoscaling_enabled if obj_storage_bucket != "" else False,
                     "minReplicas": autoscaling_min_replicas,
