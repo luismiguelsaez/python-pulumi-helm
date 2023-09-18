@@ -736,6 +736,7 @@ def prometheus_stack(
     prometheus_tsdb_retention: str = "30d",
     prometheus_external_label_env: str = "dev",
     prometheus_crds_enabled: bool = True,
+    resources_prometheus: dict = { "requests": { "cpu": "1000m", "memory": "2048Mi" }, "limits": { "cpu": "1000m", "memory": "2048Mi" } },
     karpenter_node_enabled: bool = False,
     obj_storage_bucket: str = "",
     name_override: str = "prom-stack",
@@ -948,16 +949,7 @@ def prometheus_stack(
                     "podMonitorNamespaceSelector": {},
                     "podMonitorSelectorNilUsesHelmValues": False,
                     "containers": sidecar_containers if thanos_enabled else [],
-                    "resources": {
-                        "requests": {
-                            "cpu": "1000m",
-                            "memory": "2048Mi"
-                        },
-                        "limits": {
-                            "cpu": "2000m",
-                            "memory": "4096Mi"
-                        }
-                    },
+                    "resources": resources_prometheus,
                     "affinity": prom_server_affinity,
                     "tolerations": [],
                     "podMetadata": {
@@ -1652,7 +1644,12 @@ def loki(
     eks_sa_role_arn: str = "",
     obj_storage_bucket: str = "",
     metrics_enabled: bool = False,
-    single_binary_enabled: bool = True,
+    singlebinary_enabled: bool = True,
+    resources_singlebinary: dict = { "requests": { "cpu": "500m", "memory": "1024Mi" }, "limits": { "cpu": "1000m", "memory": "2048Mi" } },
+    resources_read: dict = { "requests": { "cpu": "500m", "memory": "1024Mi" }, "limits": { "cpu": "1000m", "memory": "2048Mi" } },
+    resources_write: dict = { "requests": { "cpu": "500m", "memory": "1024Mi" }, "limits": { "cpu": "1000m", "memory": "2048Mi" } },
+    resources_backend: dict = { "requests": { "cpu": "500m", "memory": "1024Mi" }, "limits": { "cpu": "1000m", "memory": "2048Mi" } },
+    resources_gateway: dict = { "requests": { "cpu": "100m", "memory": "128Mi" }, "limits": { "cpu": "250m", "memory": "256Mi" } },
     replicas_read: int = 3,
     replicas_write: int = 3,
     replicas_backend: int = 3,
@@ -1697,7 +1694,7 @@ def loki(
                     "topologyKey": "kubernetes.io/hostname",
                     "labelSelector": {
                         "matchLabels": {
-                            "app.kubernetes.io/component": "read"
+                            "component": "read"
                         }
                     }
                 }
@@ -1712,7 +1709,7 @@ def loki(
                     "topologyKey": "kubernetes.io/hostname",
                     "labelSelector": {
                         "matchLabels": {
-                            "app.kubernetes.io/component": "write"
+                            "component": "write"
                         }
                     }
                 }
@@ -1727,7 +1724,7 @@ def loki(
                     "topologyKey": "kubernetes.io/hostname",
                     "labelSelector": {
                         "matchLabels": {
-                            "app.kubernetes.io/component": "backend"
+                            "component": "backend"
                         }
                     }
                 }
@@ -1742,7 +1739,22 @@ def loki(
                     "topologyKey": "kubernetes.io/hostname",
                     "labelSelector": {
                         "matchLabels": {
-                            "app.kubernetes.io/component": "gateway"
+                            "component": "gateway"
+                        }
+                    }
+                }
+            ]
+        }
+    }
+
+    singlebinary_affinity = {
+        "podAntiAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": [
+                {
+                    "topologyKey": "kubernetes.io/hostname",
+                    "labelSelector": {
+                        "matchLabels": {
+                            "component": "singlebinary"
                         }
                     }
                 }
@@ -1755,11 +1767,13 @@ def loki(
         write_affinity.update(karpenter_provisioner_affinity)
         backend_affinity.update(karpenter_provisioner_affinity)
         gateway_affinity.update(karpenter_provisioner_affinity)
+        singlebinary_affinity.update(karpenter_provisioner_affinity)
 
     read_affinity_str = yaml.dump(read_affinity, default_flow_style=False)
     write_affinity_str = yaml.dump(write_affinity, default_flow_style=False)
     backend_affinity_str = yaml.dump(backend_affinity, default_flow_style=False)
     gateway_affinity_str = yaml.dump(gateway_affinity, default_flow_style=False)
+    singlebinary_affinity_str = yaml.dump(singlebinary_affinity, default_flow_style=False)
 
     karpenter_provisioner_obj = {
         "apiVersion": "karpenter.sh/v1alpha5",
@@ -1916,7 +1930,7 @@ def loki(
             },
             # Enabling single binary mode will disable the `read`, `write` and `backend` components
             "singleBinary": {
-                "replicas": replicas_single_binary if single_binary_enabled else 0,
+                "replicas": replicas_single_binary if singlebinary_enabled else 0,
                 "autoscaling": {
                     "enabled": autoscaling_enabled if obj_storage_bucket != "" else False,
                     "minReplicas": autoscaling_min_replicas,
@@ -1924,6 +1938,11 @@ def loki(
                     "targetCPUUtilizationPercentage": 60,
                     "behavior": {},
                 },
+                "podLabels": {
+                    "component": "singlebinary"
+                },
+                "resources": resources_singlebinary,
+                "affinity": singlebinary_affinity_str,
             },
             "write": {
                 "replicas": replicas_write if obj_storage_bucket != "" else 1,
@@ -1938,6 +1957,10 @@ def loki(
                     "size": storage_size_write,
                     "storageClass": storage_class_name,
                 },
+                "podLabels": {
+                    "component": "write"
+                },
+                "resources": resources_write,
                 "affinity": write_affinity_str,
             },
             "read": {
@@ -1953,6 +1976,10 @@ def loki(
                     "size": storage_size_read,
                     "storageClass": storage_class_name,
                 },
+                "podLabels": {
+                    "component": "read"
+                },
+                "resources": resources_read,
                 "affinity": read_affinity_str,
             },
             "backend": {
@@ -1968,6 +1995,10 @@ def loki(
                     "size": storage_size_backend,
                     "storageClass": storage_class_name,
                 },
+                "podLabels": {
+                    "component": "backend"
+                },
+                "resources": resources_backend,
                 "affinity": backend_affinity_str,
             },
             "gateway": {
@@ -1980,6 +2011,10 @@ def loki(
                     "targetCPUUtilizationPercentage": 60,
                     "behavior": {},
                 },
+                "podLabels": {
+                    "component": "gateway"
+                },
+                "resources": resources_gateway,
                 "affinity": gateway_affinity_str,
             },
             "test": {
