@@ -1912,6 +1912,16 @@ def loki(
                     f"loki.{ingress_domain}"
                 ]
             },
+            "singleBinary": {
+                "replicas": 1 if obj_storage_bucket != "" else 0,
+                "autoscaling": {
+                    "enabled": autoscaling_enabled if obj_storage_bucket != "" else False,
+                    "minReplicas": autoscaling_min_replicas,
+                    "maxReplicas": autoscaling_max_replicas,
+                    "targetCPUUtilizationPercentage": 60,
+                    "behavior": {},
+                },
+            },
             "write": {
                 "replicas": replicas_write if obj_storage_bucket != "" else 1,
                 "autoscaling": {
