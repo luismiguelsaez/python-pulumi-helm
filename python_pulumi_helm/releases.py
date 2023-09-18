@@ -1652,6 +1652,7 @@ def loki(
     eks_sa_role_arn: str = "",
     obj_storage_bucket: str = "",
     metrics_enabled: bool = False,
+    single_binary_enabled: bool = True,
     replicas_read: int = 3,
     replicas_write: int = 3,
     replicas_backend: int = 3,
