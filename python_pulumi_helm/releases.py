@@ -1915,7 +1915,7 @@ def loki(
             "write": {
                 "replicas": replicas_write,
                 "autoscaling": {
-                    "enabled": autoscaling_enabled,
+                    "enabled": autoscaling_enabled if obj_storage_bucket != "" else False,
                     "minReplicas": autoscaling_min_replicas,
                     "maxReplicas": autoscaling_max_replicas,
                     "targetCPUUtilizationPercentage": 60,
@@ -1930,7 +1930,7 @@ def loki(
             "read": {
                 "replicas": replicas_read,
                 "autoscaling": {
-                    "enabled": autoscaling_enabled,
+                    "enabled": autoscaling_enabled if obj_storage_bucket != "" else False,
                     "minReplicas": autoscaling_min_replicas,
                     "maxReplicas": autoscaling_max_replicas,
                     "targetCPUUtilizationPercentage": 60,
@@ -1945,7 +1945,7 @@ def loki(
             "backend": {
                 "replicas": replicas_backend,
                 "autoscaling": {
-                    "enabled": autoscaling_enabled,
+                    "enabled": autoscaling_enabled if obj_storage_bucket != "" else False,
                     "minReplicas": autoscaling_min_replicas,
                     "maxReplicas": autoscaling_max_replicas,
                     "targetCPUUtilizationPercentage": 60,
