@@ -1892,9 +1892,9 @@ def loki(
                 "ingester": {},
                 "storage": {
                     "bucketNames": {
-                        "chunks": obj_storage_bucket if obj_storage_bucket != "" else "chunks",
-                        "ruler": obj_storage_bucket if obj_storage_bucket != "" else "ruler",
-                        "admin": obj_storage_bucket if obj_storage_bucket != "" else "admin"
+                        "chunks": "chunks",
+                        "ruler": "ruler",
+                        "admin": "admin"
                     },
                     "type": "s3" if obj_storage_bucket != "" else "filesystem",
                     # https://grafana.com/docs/loki/latest/storage/#aws-deployment-s3-single-store
