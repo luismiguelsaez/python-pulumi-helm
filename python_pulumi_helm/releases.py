@@ -38,6 +38,15 @@ def cilium(
             "routingMode": "native",
             "hubble": {
                 "enabled": True,
+                "ui": {
+                    "enabled": True
+                },
+                "relay": {
+                    "enabled": True
+                },
+                "metrics": {
+                    "enabled": "{dns,drop,tcp,flow,icmp,http}"
+                }
             }
         },
     )
@@ -1892,9 +1901,9 @@ def loki(
                 "ingester": {},
                 "storage": {
                     "bucketNames": {
-                        "chunks": "chunks",
-                        "ruler": "ruler",
-                        "admin": "admin"
+                        "chunks": obj_storage_bucket if obj_storage_bucket != "" else "chunks",
+                        "ruler": obj_storage_bucket if obj_storage_bucket != "" else "ruler",
+                        "admin": obj_storage_bucket if obj_storage_bucket != "" else "admin"
                     },
                     "type": "s3" if obj_storage_bucket != "" else "filesystem",
                     # https://grafana.com/docs/loki/latest/storage/#aws-deployment-s3-single-store
