@@ -1914,6 +1914,7 @@ def loki(
                     f"loki.{ingress_domain}"
                 ]
             },
+            # Enabling single binary mode will disable the `read`, `write` and `backend` components
             "singleBinary": {
                 "replicas": replicas_single_binary if single_binary_enabled else 0,
                 "autoscaling": {
@@ -1969,9 +1970,6 @@ def loki(
                 },
                 "affinity": backend_affinity_str,
             },
-            "test": {
-                "enabled": True,
-            },
             "gateway": {
                 "enabled": True,
                 "replicas": replicas_gateway,
@@ -1983,6 +1981,9 @@ def loki(
                     "behavior": {},
                 },
                 "affinity": gateway_affinity_str,
+            },
+            "test": {
+                "enabled": False,
             },
             "extraObjects": [] + [karpenter_provisioner_obj] if karpenter_node_enabled else [],
         }
