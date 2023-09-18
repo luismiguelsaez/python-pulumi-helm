@@ -1657,6 +1657,7 @@ def loki(
     replicas_write: int = 3,
     replicas_backend: int = 3,
     replicas_gateway: int = 3,
+    replicas_single_binary: int = 3,
     autoscaling_enabled: bool = False,
     autoscaling_min_replicas: int = 2,
     autoscaling_max_replicas: int = 5,
@@ -1914,7 +1915,7 @@ def loki(
                 ]
             },
             "singleBinary": {
-                "replicas": 1 if obj_storage_bucket != "" else 0,
+                "replicas": replicas_single_binary if single_binary_enabled else 0,
                 "autoscaling": {
                     "enabled": autoscaling_enabled if obj_storage_bucket != "" else False,
                     "minReplicas": autoscaling_min_replicas,
