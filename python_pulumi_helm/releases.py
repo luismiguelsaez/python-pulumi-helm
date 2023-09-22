@@ -329,6 +329,7 @@ def ingress_nginx(
     public: bool = True,
     proxy_protocol: bool = True,
     target_node_labels: list[str] = [],
+    alb_resource_tags: dict = { "pulumi-provisioned" : "true" },
     metrics_enabled: bool = False,
     name: str = "ingress-nginx",
     chart: str = "ingress-nginx",
@@ -358,6 +359,8 @@ def ingress_nginx(
         "service.beta.kubernetes.io/aws-load-balancer-healthcheck-interval": 5,
         # Proxy protocol options
         "service.beta.kubernetes.io/aws-load-balancer-proxy-protocol": "*" if proxy_protocol else "",
+        # Additional AWS resource tags
+        "service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags": ",".join([ f"{k}={v}" for k,v in alb_resource_tags.items() ]),
     }
 
     ssl_enabled_service_annotations = {
