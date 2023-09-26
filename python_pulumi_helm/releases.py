@@ -1,3 +1,4 @@
+import time
 from pulumi_kubernetes.helm.v3 import Release
 from .helpers.resources import release
 import pulumi
@@ -331,6 +332,12 @@ def ingress_nginx(
     target_node_labels: list[str] = [],
     alb_resource_tags: dict = { "pulumi-provisioned" : "true" },
     metrics_enabled: bool = False,
+    global_rate_limit_enabled: bool = False,
+    global_rate_limit_memcached_host: str = "",
+    global_rate_limit_status_code: int = 429,
+    global_rate_limit_memcached_port: int = 11211,
+    karpenter_node_enabled: bool = False,
+    karpenter_node_provider_name: str = "default",
     name: str = "ingress-nginx",
     chart: str = "ingress-nginx",
     version: str = "4.2.5",
@@ -338,6 +345,37 @@ def ingress_nginx(
     namespace: str = "default",
     skip_await: bool = False,
     depends_on: list = [] )->Release:
+
+    karpenter_provisioner_obj = {
+        "apiVersion": "karpenter.sh/v1alpha5",
+        "kind": "Provisioner",
+        "metadata": {
+            "labels": {
+                "app": "memcached-ratelimit",
+                "ingress": name,
+            },
+            "name": "loki",
+        },
+        "spec": {
+            "consolidation": {
+                "enabled": True,
+            },
+            "labels": {
+                "app": "memcached-ratelimit",
+                "ingress": name,
+            },
+            "taints": [],
+            "providerRef": {
+                "name": karpenter_node_provider_name,
+            },
+            "requirements": [
+                { "key": "karpenter.k8s.aws/instance-category", "operator": "In", "values": [ "t" ] },
+                { "key": "kubernetes.io/arch", "operator": "In", "values": [ "arm64" ] },
+                { "key": "kubernetes.io/os", "operator": "In", "values": [ "linux" ] },
+                { "key": "karpenter.sh/capacity-type", "operator": "In", "values": [ "spot", "on-demand" ] },
+            ],
+        },
+    }
 
     service_annotations = {
         "service.beta.kubernetes.io/aws-load-balancer-name": f"k8s-{name_suffix}",
@@ -373,12 +411,139 @@ def ingress_nginx(
     target_node_labels_service_annotations = {
         "service.beta.kubernetes.io/aws-load-balancer-target-node-labels": ",".join(target_node_labels),
     }
+    
+    configmap_settings = {
+        "ssl-redirect": False,
+        "redirect-to-https": True,
+        "use-forwarded-headers": True,
+        "use-proxy-protocol": True,
+        "skip-access-log-urls": "/healthz,/healthz/",
+        "no-tls-redirect-locations": "/healthz,/healthz/",
+        "log-format-upstream": '$remote_addr - $host [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" $request_length $request_time [$proxy_upstream_name] [$proxy_alternative_upstream_name] $upstream_addr $upstream_response_length $upstream_response_time $upstream_status $req_id',
+        "server-snippet": "if ($proxy_protocol_server_port != '443'){ return 301 https://$host$request_uri; }",
+    }
+    
+    global_rate_limit_configmap_settings = {
+        #"http-snippet": "limit_req_zone ${request_method}-${request_uri}-${http_x_custom_header} zone=default:10m rate=50r/s;",
+        "global-rate-limit-status-code": global_rate_limit_status_code,
+        "global-rate-limit-memcached-host": global_rate_limit_memcached_host,
+        "global-rate-limit-memcached-port": global_rate_limit_memcached_port,
+    }
 
     if ssl_enabled:
         service_annotations.update(ssl_enabled_service_annotations)
 
     if len(target_node_labels) > 0:
         service_annotations.update(target_node_labels_service_annotations)
+
+    if global_rate_limit_enabled:
+        configmap_settings.update(global_rate_limit_configmap_settings)
+        memcached_release = release(
+            name=f"memcached-{name}",
+            chart="memcached",
+            version="6.6.2",
+            repo="https://charts.bitnami.com/bitnami",
+            namespace=namespace,
+            skip_await=skip_await,
+            depends_on=depends_on,
+            provider=provider,
+            timeout=600,
+            values={
+                "extraDeploy": [] + [karpenter_provisioner_obj] if karpenter_node_enabled else [],
+                "fullnameOverride": f"memcached-{name}",
+                "commonLabels": {
+                    "app": "memcached-ratelimit",
+                    "ingress": name,
+                },
+                "metrics": {
+                    "enabled": True,
+                    "serviceMonitor": {
+                        "enabled": True,
+                    }
+                },
+                "service": {
+                    "sessionAffinity": "ClientIP"
+                },
+                "persistence": {
+                    "enabled": False
+                },
+                "resources": {
+                    "limits": {},
+                    "requests": {
+                    "memory": "256Mi",
+                    "cpu": "250m"
+                    }
+                },
+                "architecture": "high-availability",
+                "replicaCount": 3,
+                "autoscaling": {
+                    "enabled": False,
+                    "minReplicas": 2,
+                    "maxReplicas": 6,
+                    "targetCPU": 50,
+                    "targetMemory": 50
+                },
+                "affinity": {
+                    "nodeAffinity": {
+                        "requiredDuringSchedulingIgnoredDuringExecution": {
+                            "nodeSelectorTerms": [
+                                {
+                                    "matchExpressions": [
+                                        {
+                                            "key": "app",
+                                            "operator": "In",
+                                            "values": [ "memcached-ratelimit" ]
+                                        },
+                                        {
+                                            "key": "ingress",
+                                            "operator": "In",
+                                            "values": [ name ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    "podAntiAffinity": {
+                        "requiredDuringSchedulingIgnoredDuringExecution": [
+                            {
+                                "labelSelector": {
+                                    "matchLabels": {
+                                        "app": "memcached-ratelimit",
+                                        "ingress": name,
+                                    }
+                                },
+                                "topologyKey": "kubernetes.io/hostname"
+                            }
+                        ]
+                    }
+                },
+                "topologySpreadConstraints": [
+                    {
+                        "labelSelector": {
+                            "matchLabels": {
+                                "app": "memcached-ratelimit",
+                                "ingress": name,
+                            }
+                        },
+                        "maxSkew": 1,
+                        "topologyKey": "topology.kubernetes.io/zone",
+                        "whenUnsatisfiable": "DoNotSchedule"
+                    },
+                    {
+                        "labelSelector": {
+                            "matchLabels": {
+                                "app": "memcached-ratelimit",
+                                "ingress": name,
+                            }
+                        },
+                        "maxSkew": 1,
+                        "topologyKey": "kubernetes.io/hostname",
+                        "whenUnsatisfiable": "DoNotSchedule"
+                    }
+                ]
+            }
+        )
 
     ingress_nginx_release = release(
         name=name,
@@ -416,16 +581,7 @@ def ingress_nginx(
                     "controllerValue": f"k8s.io/ingress-nginx-{name_suffix}"
                 },
                 "electionID": f"ingress-controller-{name_suffix}-leader",
-                "config": {
-                    "ssl-redirect": False,
-                    "redirect-to-https": True,
-                    "use-forwarded-headers": True,
-                    "use-proxy-protocol": True,
-                    "skip-access-log-urls": "/healthz,/healthz/",
-                    "no-tls-redirect-locations": "/healthz,/healthz/",
-                    "log-format-upstream": '$remote_addr - $host [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" $request_length $request_time [$proxy_upstream_name] [$proxy_alternative_upstream_name] $upstream_addr $upstream_response_length $upstream_response_time $upstream_status $req_id',
-                    "server-snippet": "if ($proxy_protocol_server_port != '443'){ return 301 https://$host$request_uri; }",
-                },
+                "config": configmap_settings,
                 "containerPort": {
                     "http": 80,
                     "https": 443,
