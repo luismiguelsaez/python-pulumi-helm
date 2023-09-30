@@ -333,9 +333,6 @@ def ingress_nginx(
     alb_resource_tags: dict = { "pulumi-provisioned" : "true" },
     metrics_enabled: bool = False,
     global_rate_limit_enabled: bool = False,
-    global_rate_limit_memcached_host: str = "",
-    global_rate_limit_status_code: int = 429,
-    global_rate_limit_memcached_port: int = 11211,
     karpenter_node_enabled: bool = False,
     karpenter_node_provider_name: str = "default",
     name: str = "ingress-nginx",
@@ -351,17 +348,17 @@ def ingress_nginx(
         "kind": "Provisioner",
         "metadata": {
             "labels": {
-                "app": "memcached-ratelimit",
+                "app": f"memcached-ratelimit-{name}",
                 "ingress": name,
             },
-            "name": "loki",
+            "name": f"memcached-ratelimit-{name}",
         },
         "spec": {
             "consolidation": {
                 "enabled": True,
             },
             "labels": {
-                "app": "memcached-ratelimit",
+                "app": f"memcached-ratelimit-{name}",
                 "ingress": name,
             },
             "taints": [],
@@ -376,6 +373,48 @@ def ingress_nginx(
             ],
         },
     }
+
+    karpenter_node_affinity = {
+        "nodeAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": {
+                "nodeSelectorTerms": [
+                    {
+                        "matchExpressions": [
+                            {
+                                "key": "app",
+                                "operator": "In",
+                                "values": [ f"memcached-ratelimit-{name}" ]
+                            },
+                            {
+                                "key": "ingress",
+                                "operator": "In",
+                                "values": [ name ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    }
+    
+    default_affinity = {
+        "podAntiAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": [
+                {
+                    "labelSelector": {
+                        "matchLabels": {
+                            "app": f"memcached-ratelimit-{name}",
+                            "ingress": name,
+                        }
+                    },
+                    "topologyKey": "kubernetes.io/hostname"
+                }
+            ]
+        }
+    }
+    
+    if karpenter_node_enabled:
+        default_affinity.update(karpenter_node_affinity)
 
     service_annotations = {
         "service.beta.kubernetes.io/aws-load-balancer-name": f"k8s-{name_suffix}",
@@ -425,9 +464,9 @@ def ingress_nginx(
     
     global_rate_limit_configmap_settings = {
         #"http-snippet": "limit_req_zone ${request_method}-${request_uri}-${http_x_custom_header} zone=default:10m rate=50r/s;",
-        "global-rate-limit-status-code": global_rate_limit_status_code,
-        "global-rate-limit-memcached-host": global_rate_limit_memcached_host,
-        "global-rate-limit-memcached-port": global_rate_limit_memcached_port,
+        "global-rate-limit-status-code": 429,
+        "global-rate-limit-memcached-host": f"memcached-{name}.{namespace}.svc.cluster.local",
+        "global-rate-limit-memcached-port": 11211,
     }
 
     if ssl_enabled:
@@ -439,7 +478,7 @@ def ingress_nginx(
     if global_rate_limit_enabled:
         configmap_settings.update(global_rate_limit_configmap_settings)
         memcached_release = release(
-            name=f"memcached-{name}",
+            name=f"memcached-ratelimit-{name}",
             chart="memcached",
             version="6.6.2",
             repo="https://charts.bitnami.com/bitnami",
@@ -450,9 +489,9 @@ def ingress_nginx(
             timeout=600,
             values={
                 "extraDeploy": [] + [karpenter_provisioner_obj] if karpenter_node_enabled else [],
-                "fullnameOverride": f"memcached-{name}",
+                "fullnameOverride": f"memcached-ratelimit-{name}",
                 "commonLabels": {
-                    "app": "memcached-ratelimit",
+                    "app": f"memcached-ratelimit-{name}",
                     "ingress": name,
                 },
                 "metrics": {
@@ -470,8 +509,8 @@ def ingress_nginx(
                 "resources": {
                     "limits": {},
                     "requests": {
-                    "memory": "256Mi",
-                    "cpu": "250m"
+                        "memory": "256Mi",
+                        "cpu": "250m"
                     }
                 },
                 "architecture": "high-availability",
@@ -483,46 +522,12 @@ def ingress_nginx(
                     "targetCPU": 50,
                     "targetMemory": 50
                 },
-                "affinity": {
-                    "nodeAffinity": {
-                        "requiredDuringSchedulingIgnoredDuringExecution": {
-                            "nodeSelectorTerms": [
-                                {
-                                    "matchExpressions": [
-                                        {
-                                            "key": "app",
-                                            "operator": "In",
-                                            "values": [ "memcached-ratelimit" ]
-                                        },
-                                        {
-                                            "key": "ingress",
-                                            "operator": "In",
-                                            "values": [ name ]
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    },
-                    "podAntiAffinity": {
-                        "requiredDuringSchedulingIgnoredDuringExecution": [
-                            {
-                                "labelSelector": {
-                                    "matchLabels": {
-                                        "app": "memcached-ratelimit",
-                                        "ingress": name,
-                                    }
-                                },
-                                "topologyKey": "kubernetes.io/hostname"
-                            }
-                        ]
-                    }
-                },
+                "affinity": default_affinity,
                 "topologySpreadConstraints": [
                     {
                         "labelSelector": {
                             "matchLabels": {
-                                "app": "memcached-ratelimit",
+                                "app": f"memcached-ratelimit-{name}",
                                 "ingress": name,
                             }
                         },
@@ -533,7 +538,7 @@ def ingress_nginx(
                     {
                         "labelSelector": {
                             "matchLabels": {
-                                "app": "memcached-ratelimit",
+                                "app": f"memcached-ratelimit-{name}",
                                 "ingress": name,
                             }
                         },
