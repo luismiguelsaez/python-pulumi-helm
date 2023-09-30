@@ -348,17 +348,17 @@ def ingress_nginx(
         "kind": "Provisioner",
         "metadata": {
             "labels": {
-                "app": f"memcached-ratelimit-{name}",
+                "app": f"mc-{name}",
                 "ingress": name,
             },
-            "name": f"memcached-ratelimit-{name}",
+            "name": f"mc-{name}",
         },
         "spec": {
             "consolidation": {
                 "enabled": True,
             },
             "labels": {
-                "app": f"memcached-ratelimit-{name}",
+                "app": f"mc-{name}",
                 "ingress": name,
             },
             "taints": [],
@@ -383,7 +383,7 @@ def ingress_nginx(
                             {
                                 "key": "app",
                                 "operator": "In",
-                                "values": [ f"memcached-ratelimit-{name}" ]
+                                "values": [ f"mc-{name}" ]
                             },
                             {
                                 "key": "ingress",
@@ -403,7 +403,7 @@ def ingress_nginx(
                 {
                     "labelSelector": {
                         "matchLabels": {
-                            "app": f"memcached-ratelimit-{name}",
+                            "app": f"mc-{name}",
                             "ingress": name,
                         }
                     },
@@ -478,7 +478,7 @@ def ingress_nginx(
     if global_rate_limit_enabled:
         configmap_settings.update(global_rate_limit_configmap_settings)
         memcached_release = release(
-            name=f"memcached-ratelimit-{name}",
+            name=f"mc-{name}",
             chart="memcached",
             version="6.6.2",
             repo="https://charts.bitnami.com/bitnami",
@@ -489,9 +489,9 @@ def ingress_nginx(
             timeout=600,
             values={
                 "extraDeploy": [] + [karpenter_provisioner_obj] if karpenter_node_enabled else [],
-                "fullnameOverride": f"memcached-ratelimit-{name}",
+                "fullnameOverride": f"mc-{name}",
                 "commonLabels": {
-                    "app": f"memcached-ratelimit-{name}",
+                    "app": f"mc-{name}",
                     "ingress": name,
                 },
                 "metrics": {
@@ -527,7 +527,7 @@ def ingress_nginx(
                     {
                         "labelSelector": {
                             "matchLabels": {
-                                "app": f"memcached-ratelimit-{name}",
+                                "app": f"mc-{name}",
                                 "ingress": name,
                             }
                         },
@@ -538,7 +538,7 @@ def ingress_nginx(
                     {
                         "labelSelector": {
                             "matchLabels": {
-                                "app": f"memcached-ratelimit-{name}",
+                                "app": f"mc-{name}",
                                 "ingress": name,
                             }
                         },
