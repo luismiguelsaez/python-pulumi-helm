@@ -465,7 +465,7 @@ def ingress_nginx(
     global_rate_limit_configmap_settings = {
         #"http-snippet": "limit_req_zone ${request_method}-${request_uri}-${http_x_custom_header} zone=default:10m rate=50r/s;",
         "global-rate-limit-status-code": 429,
-        "global-rate-limit-memcached-host": f"memcached-{name}.{namespace}.svc.cluster.local",
+        "global-rate-limit-memcached-host": f"memcached-{name}",
         "global-rate-limit-memcached-port": 11211,
     }
 
@@ -495,9 +495,9 @@ def ingress_nginx(
                     "ingress": name,
                 },
                 "metrics": {
-                    "enabled": True,
+                    "enabled": metrics_enabled,
                     "serviceMonitor": {
-                        "enabled": True,
+                        "enabled": metrics_enabled,
                     }
                 },
                 "service": {
