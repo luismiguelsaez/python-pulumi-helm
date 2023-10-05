@@ -756,6 +756,8 @@ def argocd(
         depends_on=depends_on,
         provider=provider,
         values=      {
+            "installCRDs": True,
+            "keepCRDs": False,
             "global": {
                 "additionalLabels": {
                     "app": "argo-cd"
