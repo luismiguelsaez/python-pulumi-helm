@@ -906,7 +906,7 @@ def prometheus_stack(
     aws_region: str,
     ingress_domain: str,
     ingress_class_name: str,
-    storage_class_name: str,
+    storage_class_name: str = "ebs",
     eks_sa_role_arn: str = "",
     thanos_enabled: bool = False,
     prometheus_tsdb_retention: str = "30d",
@@ -1159,7 +1159,7 @@ def prometheus_stack(
                     "storageSpec": {
                         "volumeClaimTemplate": {
                             "spec": {
-                                "storageClassName": "ebs",
+                                "storageClassName": storage_class_name,
                                 "accessModes": ["ReadWriteOnce"],
                                 "resources": {
                                     "requests": {
