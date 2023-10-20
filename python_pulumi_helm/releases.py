@@ -642,6 +642,7 @@ def argocd(
     argocd_application_controller_replicas: int = 2,
     argocd_applicationset_controller_replicas: int = 2,
     karpenter_node_enabled: bool = False,
+    karpenter_node_provider_name: str = "default",
     name: str = "argo-cd",
     chart: str = "argo-cd",
     version: str = "5.46.0",
@@ -669,7 +670,7 @@ def argocd(
                 },
                 "taints": [],
                 "providerRef": {
-                    "name": "default",
+                    "name": karpenter_node_provider_name,
                 },
                 "requirements": [
                     { "key": "karpenter.k8s.aws/instance-category", "operator": "In", "values": [ "t" ] },
@@ -699,7 +700,7 @@ def argocd(
                 },
                 "taints": [],
                 "providerRef": {
-                    "name": "default",
+                    "name": karpenter_node_provider_name,
                 },
                 "requirements": [
                     { "key": "karpenter.k8s.aws/instance-category", "operator": "In", "values": [ "t" ] },
@@ -913,6 +914,7 @@ def prometheus_stack(
     prometheus_crds_enabled: bool = True,
     resources_prometheus: dict = { "requests": { "cpu": "1000m", "memory": "2048Mi" }, "limits": { "cpu": "1000m", "memory": "2048Mi" } },
     karpenter_node_enabled: bool = False,
+    karpenter_node_provider_name: str = "default",
     obj_storage_bucket: str = "",
     name_override: str = "prom-stack",
     name: str = "kube-prometheus-stack",
@@ -997,7 +999,7 @@ def prometheus_stack(
             },
             "taints": [],
             "providerRef": {
-                "name": "bottlerocket"
+                "name": karpenter_node_provider_name
             },
             "requirements": [
                 { "key": "karpenter.k8s.aws/instance-category", "operator": "In", "values": ["t"] },
@@ -1259,6 +1261,7 @@ def thanos_stack(
     compactor_retention_resolution_5m: str = "90d",
     compactor_retention_resolution_1h: str = "1y",
     karpenter_node_enabled: bool = False,
+    karpenter_node_provider_name: str = "default",
     name_override: str = "",
     name: str = "thanos",
     chart: str = "thanos",
@@ -1287,7 +1290,7 @@ def thanos_stack(
             },
             "taints": [],
             "providerRef": {
-                "name": "bottlerocket"
+                "name": karpenter_node_provider_name
             },
             "requirements": [
                 { "key": "karpenter.k8s.aws/instance-category", "operator": "In", "values": ["t"] },
