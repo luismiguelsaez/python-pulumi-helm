@@ -732,6 +732,14 @@ def argocd(
         },
     }
 
+    karpenter_provisioner_topology_spread_constraints = [
+        {
+            "maxSkew": 1,
+            "topologyKey": "topology.kubernetes.io/zone",
+            "whenUnsatisfiable": "DoNotSchedule"
+        }
+    ]
+
     karpenter_provisioner_affinity_redis = {
         "nodeAffinity": {
             "requiredDuringSchedulingIgnoredDuringExecution": {
@@ -769,6 +777,7 @@ def argocd(
                 },
                 "revisionHistoryLimit": 3,
                 "affinity": karpenter_provisioner_affinity_global if karpenter_node_enabled else {},
+                "topologySpreadConstraints": karpenter_provisioner_topology_spread_constraints if karpenter_node_enabled else [],
             },
             "configs": {
                 "cm": {
