@@ -643,6 +643,14 @@ def argocd(
     argocd_applicationset_controller_replicas: int = 2,
     karpenter_node_enabled: bool = False,
     karpenter_node_provider_name: str = "default",
+    karpenter_provisioner_controller_instance_category: list[str] = ["t"],
+    karpenter_provisioner_controller_instance_arch: list[str] = ["amd64"],
+    karpenter_provisioner_controller_instance_capacity_type: list[str] = ["spot"],
+    karpenter_provisioner_redis_instance_category: list[str] = ["t"],
+    karpenter_provisioner_redis_instance_arch: list[str] = ["arm64"],
+    karpenter_provisioner_redis_instance_capacity_type: list[str] = ["spot"],
+    controller_resources: dict = {},
+    repo_server_resources: dict = {},
     name: str = "argo-cd",
     chart: str = "argo-cd",
     version: str = "5.46.0",
@@ -673,12 +681,10 @@ def argocd(
                     "name": karpenter_node_provider_name,
                 },
                 "requirements": [
-                    { "key": "karpenter.k8s.aws/instance-category", "operator": "In", "values": [ "t" ] },
-                    { "key": "karpenter.k8s.aws/instance-cpu", "operator": "In", "values": [ "2" ] },
-                    { "key": "karpenter.k8s.aws/instance-memory", "operator": "In", "values": [ "4096" ] },
-                    { "key": "kubernetes.io/arch", "operator": "In", "values": [ "arm64" ] },
+                    { "key": "karpenter.k8s.aws/instance-category", "operator": "In", "values": karpenter_provisioner_controller_instance_category },
+                    { "key": "kubernetes.io/arch", "operator": "In", "values": karpenter_provisioner_controller_instance_arch },
                     { "key": "kubernetes.io/os", "operator": "In", "values": [ "linux" ] },
-                    { "key": "karpenter.sh/capacity-type", "operator": "In", "values": [ "spot", "on-demand" ] },
+                    { "key": "karpenter.sh/capacity-type", "operator": "In", "values": karpenter_provisioner_controller_instance_capacity_type },
                 ],
             },
         },
@@ -703,12 +709,10 @@ def argocd(
                     "name": karpenter_node_provider_name,
                 },
                 "requirements": [
-                    { "key": "karpenter.k8s.aws/instance-category", "operator": "In", "values": [ "t" ] },
-                    { "key": "karpenter.k8s.aws/instance-cpu", "operator": "In", "values": [ "2" ] },
-                    { "key": "karpenter.k8s.aws/instance-memory", "operator": "In", "values": [ "2048" ] },
-                    { "key": "kubernetes.io/arch", "operator": "In", "values": [ "arm64" ] },
+                    { "key": "karpenter.k8s.aws/instance-category", "operator": "In", "values": karpenter_provisioner_redis_instance_category },
+                    { "key": "kubernetes.io/arch", "operator": "In", "values": karpenter_provisioner_redis_instance_arch },
                     { "key": "kubernetes.io/os", "operator": "In", "values": [ "linux" ] },
-                    { "key": "karpenter.sh/capacity-type", "operator": "In", "values": [ "spot", "on-demand" ] },
+                    { "key": "karpenter.sh/capacity-type", "operator": "In", "values": karpenter_provisioner_redis_instance_capacity_type },
                 ],
             },
         },
@@ -834,23 +838,8 @@ def argocd(
             },
             "controller": {
                 "replicas": argocd_application_controller_replicas,
-                "affinity": {
-                    "nodeAffinity": {
-                        "requiredDuringSchedulingIgnoredDuringExecution": {
-                            "nodeSelectorTerms": [
-                                {
-                                    "matchExpressions": [
-                                        {
-                                            "key": "app",
-                                            "operator": "In",
-                                            "values": ["argo-cd"]
-                                        }
-                                    ],
-                                },
-                            ],
-                        },
-                    },
-                },
+                "affinity": {},
+                "resources": controller_resources,
             },
             "server": {
                 "autoscaling": {
@@ -891,9 +880,11 @@ def argocd(
                         },
                     },
                 },
+                "resources": repo_server_resources,
             },
             "applicationSet": {
                 "replicas": argocd_applicationset_controller_replicas,
+                "resources": controller_resources,
             },
             "extraObjects": karpenter_provisioner_objs if karpenter_node_enabled else [],
         }
