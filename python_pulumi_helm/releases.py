@@ -639,6 +639,8 @@ def argocd(
     ingress_class_name: str,
     argocd_redis_ha_enabled: bool = False,
     argocd_redis_ha_haproxy_enabled: bool = False,
+    argocd_redis_ha_storage_class: str = "ebs",
+    argocd_redis_ha_storage_size: str = "10Gi",
     argocd_application_controller_replicas: int = 2,
     argocd_applicationset_controller_replicas: int = 2,
     karpenter_node_enabled: bool = False,
@@ -824,6 +826,8 @@ def argocd(
                 "enabled": argocd_redis_ha_enabled,
                 "persistentVolume": {
                     "enabled": "false",
+                    "storageClass": argocd_redis_ha_storage_class,
+                    "size": argocd_redis_ha_storage_size,
                 },
                 "redis": {
                     "config": {
