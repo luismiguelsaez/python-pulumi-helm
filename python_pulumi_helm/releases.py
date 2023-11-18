@@ -643,6 +643,7 @@ def argocd(
     argocd_redis_ha_storage_size: str = "10Gi",
     argocd_application_controller_replicas: int = 2,
     argocd_applicationset_controller_replicas: int = 2,
+    argocd_crds_keep: bool = True,
     karpenter_node_enabled: bool = False,
     karpenter_node_provider_name: str = "default",
     karpenter_provisioner_controller_instance_category: list[str] = ["t"],
@@ -771,8 +772,12 @@ def argocd(
         depends_on=depends_on,
         provider=provider,
         values=      {
-            "installCRDs": True,
-            "keepCRDs": False,
+            "crds": {
+                "install": True,
+                "keep": argocd_crds_keep,
+                "annotations": {},
+                "additionalLabels": {},
+            },
             "global": {
                 "additionalLabels": {
                     "app": "argo-cd"
