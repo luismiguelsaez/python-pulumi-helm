@@ -20,6 +20,7 @@ def release(
     )
 
     release_args = ReleaseArgs(
+      name=name,
       chart=chart,
       version=version,
       repository_opts=repo_opts_args,
@@ -33,7 +34,7 @@ def release(
     resource_options = ResourceOptions(provider=provider, depends_on=depends_on)
 
     release = Release(
-      name,
+      resource_name=name,
       args=release_args,
       opts=resource_options
     )
