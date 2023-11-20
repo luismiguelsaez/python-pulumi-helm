@@ -643,6 +643,7 @@ def argocd(
     argocd_redis_ha_storage_size: str = "10Gi",
     argocd_application_controller_replicas: int = 2,
     argocd_applicationset_controller_replicas: int = 2,
+    argocd_iam_role_arn: str = "",
     argocd_crds_keep: bool = True,
     karpenter_node_enabled: bool = False,
     karpenter_node_provider_name: str = "default",
@@ -876,6 +877,12 @@ def argocd(
                 },
             },
             "repoServer": {
+                "serviceAccount": {
+                    "create": "true",
+                    "annotations": {
+                        "eks.amazonaws.com/role-arn": argocd_iam_role_arn,
+                        "automountServiceAccountToken": "true"
+                },
                 "autoscaling": {
                     "enabled": "true",
                     "minReplicas": 2,
