@@ -995,7 +995,9 @@ def argocd(
                 "replicas": argocd_applicationset_controller_replicas,
                 "resources": controller_resources,
             },
-            "extraObjects": extra_objs,
+            "extraObjects": [] 
+                + plugin_objs if argocd_plugins_enabled else []
+                + karpenter_provisioner_objs if karpenter_node_enabled else [],
         }
     )
 
