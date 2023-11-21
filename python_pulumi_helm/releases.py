@@ -738,9 +738,9 @@ def argocd(
 
     extra_objs = []
     if argocd_plugins_enabled:
-        extra_objs.append(plugin_objs)
+        extra_objs + plugin_objs
     if karpenter_node_enabled:
-        extra_objs.append(karpenter_provisioner_objs)
+        extra_objs + karpenter_provisioner_objs
 
     karpenter_provisioner_affinity_global = {
         "podAntiAffinity": "soft",
