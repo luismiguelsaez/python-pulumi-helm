@@ -645,6 +645,7 @@ def argocd(
     argocd_applicationset_controller_replicas: int = 2,
     argocd_iam_role_arn: str = "",
     argocd_crds_keep: bool = True,
+    argocd_plugins_enabled: bool = False,
     karpenter_node_enabled: bool = False,
     karpenter_node_provider_name: str = "default",
     karpenter_provisioner_controller_instance_category: list[str] = ["t"],
@@ -662,6 +663,19 @@ def argocd(
     namespace: str = "default",
     skip_await: bool = False,
     depends_on: list = [] )->Release:
+
+    plugin_objs = [
+        {
+            "apiVersion": "v1",
+            "kind": "ConfigMap",
+            "metadata": {
+                "name": "cmp-kustomize-aws-secretsmanager"
+            },
+            "data": {
+                "plugin.yaml": "apiVersion: argoproj.io/v1alpha1\nkind: ConfigManagementPlugin\nmetadata:\n  name: cmp-kustomize-aws-secretsmanager\nspec:\n  version: v1.0\n  init:\n    command: [sh, -c]\n    args:\n      - |\n        find . -type f -name kustomization.yaml\n  generate:\n    command: [sh, -c]\n    args:\n      - |\n        kustomize build . | argocd-vault-plugin generate --verbose-sensitive-output -\n  discover:\n    find:\n      glob: \"./**/kustomization.yaml\"\n"
+            }
+        }
+    ]
 
     karpenter_provisioner_objs = [
         {
@@ -721,6 +735,12 @@ def argocd(
             },
         },
     ]
+
+    extra_objs = []
+    if argocd_plugins_enabled:
+        extra_objs.append(plugin_objs)
+    if karpenter_node_enabled:
+        extra_objs.append(karpenter_provisioner_objs)
 
     karpenter_provisioner_affinity_global = {
         "podAntiAffinity": "soft",
@@ -884,6 +904,69 @@ def argocd(
                         "automountServiceAccountToken": "true",
                     },
                 },
+                # CMP BEGIN
+                "volumes": [
+                    {
+                        "name": "cmp-kustomize-aws-secretsmanager",
+                        "configMap": {
+                            "name": "cmp-kustomize-aws-secretsmanager"
+                        }
+                    },
+                    {
+                        "name": "cmp-tmp",
+                        "emptyDir": {}
+                    }
+                ] if argocd_plugins_enabled else [],
+                "extraContainers": [
+                    {
+                        "name": "cmp-kustomize-aws-secretsmanager",
+                        "command": [
+                            "/var/run/argocd/argocd-cmp-server"
+                        ],
+                        "args": [
+                            "--loglevel",
+                            "debug",
+                            "--logformat",
+                            "json"
+                        ],
+                        "image": "luismiguelsaez/argocd-cmp-default:v0.0.2",
+                        "securityContext": {
+                            "runAsNonRoot": True,
+                            "runAsUser": 999,
+                            "runAsGroup": 999
+                        },
+                        "volumeMounts": [
+                            {
+                                "mountPath": "/var/run/argocd",
+                                "name": "var-files"
+                            },
+                            {
+                                "mountPath": "/home/argocd/cmp-server/plugins",
+                                "name": "plugins"
+                            },
+                            {
+                                "mountPath": "/home/argocd/cmp-server/config/plugin.yaml",
+                                "subPath": "plugin.yaml",
+                                "name": "cmp-kustomize-aws-secretsmanager"
+                            },
+                            {
+                                "mountPath": "/tmp",
+                                "name": "cmp-tmp"
+                            }
+                        ],
+                        "env": [
+                            {
+                                "name": "AVP_TYPE",
+                                "value": "awssecretsmanager"
+                            },
+                            {
+                                "name": "HOME",
+                                "value": "/tmp"
+                            }
+                        ]
+                    }
+                ] if argocd_plugins_enabled else [],
+                ## CMP END
                 "autoscaling": {
                     "enabled": "true",
                     "minReplicas": 2,
@@ -912,7 +995,7 @@ def argocd(
                 "replicas": argocd_applicationset_controller_replicas,
                 "resources": controller_resources,
             },
-            "extraObjects": karpenter_provisioner_objs if karpenter_node_enabled else [],
+            "extraObjects": extra_objs,
         }
     )
 
