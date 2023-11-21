@@ -736,11 +736,11 @@ def argocd(
         },
     ]
 
-    extra_objs = []
+    extra_objects = []
     if argocd_plugins_enabled:
-        extra_objs + plugin_objs
+        extra_objects = extra_objects + plugin_objs
     if karpenter_node_enabled:
-        extra_objs + karpenter_provisioner_objs
+        extra_objects = extra_objects + karpenter_provisioner_objs
 
     karpenter_provisioner_affinity_global = {
         "podAntiAffinity": "soft",
@@ -995,9 +995,7 @@ def argocd(
                 "replicas": argocd_applicationset_controller_replicas,
                 "resources": controller_resources,
             },
-            "extraObjects": [] 
-                + plugin_objs if argocd_plugins_enabled else []
-                + karpenter_provisioner_objs if karpenter_node_enabled else [],
+            "extraObjects": extra_objects,
         }
     )
 
