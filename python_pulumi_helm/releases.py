@@ -881,7 +881,8 @@ def argocd(
                     "create": "true",
                     "annotations": {
                         "eks.amazonaws.com/role-arn": argocd_iam_role_arn,
-                        "automountServiceAccountToken": "true"
+                        "automountServiceAccountToken": "true",
+                    },
                 },
                 "autoscaling": {
                     "enabled": "true",
