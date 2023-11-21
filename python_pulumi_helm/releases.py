@@ -672,7 +672,7 @@ def argocd(
                 "name": "cmp-kustomize-aws-secretsmanager"
             },
             "data": {
-                "plugin.yaml": "apiVersion: argoproj.io/v1alpha1\nkind: ConfigManagementPlugin\nmetadata:\n  name: cmp-kustomize-aws-secretsmanager\nspec:\n  version: v1.0\n  init:\n    command: [sh, -c]\n    args:\n      - |\n        find . -type f -name kustomization.yaml\n  generate:\n    command: [sh, -c]\n    args:\n      - |\n        kustomize build . | argocd-vault-plugin generate --verbose-sensitive-output -\n  discover:\n    find:\n      glob: \"./**/kustomization.yaml\"\n"
+                "plugin.yaml": "apiVersion: argoproj.io/v1alpha1\nkind: ConfigManagementPlugin\nmetadata:\n  name: cmp-kustomize-aws-secretsmanager\nspec:\n  version: v1.0\n  init:\n    command: ['sh', '-c']\n    args: ['find . -type f -name kustomization.yaml']\n  generate:\n    command: ['sh', '-c']\n    args: [ 'kustomize build . | argocd-vault-plugin generate --verbose-sensitive-output -' ]\n  discover:\n    find:\n      glob: './**/kustomization.yaml'\n"
             }
         }
     ]
