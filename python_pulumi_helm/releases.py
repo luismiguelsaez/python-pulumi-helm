@@ -972,23 +972,7 @@ def argocd(
                     "minReplicas": 2,
                     "maxReplicas": 5,
                 },
-                "affinity": {
-                    "nodeAffinity": {
-                        "requiredDuringSchedulingIgnoredDuringExecution": {
-                            "nodeSelectorTerms": [
-                                {
-                                    "matchExpressions": [
-                                        {
-                                            "key": "app",
-                                            "operator": "In",
-                                            "values": ["argo-cd"]
-                                        }
-                                    ],
-                                },
-                            ],
-                        },
-                    },
-                },
+                "affinity": {},
                 "resources": repo_server_resources,
             },
             "applicationSet": {
